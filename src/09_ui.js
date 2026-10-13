@@ -115,6 +115,10 @@ function hudVitals(c, p, run, dt) {
   hudBar(c, x, y, w, h, HUDS.hpGhost, 'rgba(255,255,255,.55)', 'rgba(255,40,70,.12)');
   const g = c.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, f < .3 ? '#ff2a4a' : '#ff4a6a'); g.addColorStop(1, f < .3 ? '#ff6a3a' : '#ff8ab0'); c.fillStyle = g; c.fillRect(x, y, w * f, h);
   if (p.shieldMax) hudBar(c, x, y + h - 4, w, 4, p.shield / p.shieldMax, '#5dff8a', 'rgba(0,0,0,0)');
+  if (p.blood > 0) hudBar(c, x, y - 7, w * 40 / 100, 4, p.blood / 40, '#ff2a4a', 'rgba(255,40,70,.15)');
+  if (p.oshield > 0) hudBar(c, x + w * .45, y - 7, w * .55, 4, p.oshield / B.overheal, '#ffe23a', 'rgba(255,226,58,.15)');
+  if (p.regenPulse > 0) { c.strokeStyle = `rgba(93,255,138,${p.regenPulse * 1.5})`; c.lineWidth = 2; c.strokeRect(x - 2, y - 2, w + 4, h + 4); }
+  if (p.hydra > 0) { c.font = '800 12px ui-monospace,monospace'; c.fillStyle = '#3dffd8'; c.textAlign = 'left'; c.fillText('HYDRA +' + p.hydra, x + w + 30, y + h / 2); }
   c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1; for (let i = 1; i < p.maxHp / 25; i++) { const sx = x + w * i * 25 / p.maxHp; c.beginPath(); c.moveTo(sx, y); c.lineTo(sx, y + h); c.stroke(); }
   c.fillStyle = '#fff'; c.textAlign = 'left'; c.font = '700 12px ui-monospace,monospace'; c.fillText(`${ceil(p.hp)} / ${p.maxHp}`, x + 6, y + h / 2 + 1);
   if (B.barrier) { c.fillStyle = p.barrierT <= 0 ? '#7fdcff' : 'rgba(127,220,255,.25)'; c.beginPath(); c.arc(x + w + 16, y + h / 2, 7, 0, TAU); c.fill(); }
@@ -156,11 +160,13 @@ function hudMinimap(c, run, W) {
   const p = G.player; c.fillStyle = '#7ff6ff'; c.beginPath(); c.arc(x0 + p.x * k, y0 + p.y * k, 3, 0, TAU); c.fill();
   c.textAlign = 'right'; c.font = '700 10px ui-monospace,monospace'; c.fillStyle = T.BIO[run.biome].edge; const node = run.map.byId[run.map.cur];
   c.fillText(`${T.BIO[run.biome].n} · ${node ? ROOM_NAME[node.type].toUpperCase() : ''}`, W - 20, mh + 38); c.fillStyle = '#8a93b8'; c.fillText(`${fmtTime(run.stats.time)}  ·  SEED ${run.seed}${run.heat ? '  ·  HEAT ' + run.heat : ''}`, W - 20, mh + 52);
+  if (run.perf > 1.05) { c.fillStyle = run.perf > 1.4 ? '#ff5470' : '#ffb020'; c.fillText(`THREAT ×${run.perf.toFixed(2)}`, W - 20, mh + 66); }
 }
 function hudTop(c, run, W, H) {
   const b = G.boss;
   if (b && !b.dead && b.introT <= 0) { const w = min(620, W * .5), x = (W - w) / 2, y = 28, f = b.hp / b.maxHp; c.textAlign = 'center'; c.font = '800 13px Segoe UI,Arial'; c.fillStyle = '#fff'; c.fillText(T.boss[b.bossId].n, W / 2, y - 10);
     c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(x - 3, y - 3, w + 6, 16); hudBar(c, x, y, w, 10, f, b.col); c.fillStyle = '#000'; for (const k of [.66, .33]) c.fillRect(x + w * k - 1, y, 2, 10); return; }
+  if (B.doomsday && DIRECTOR.active && run.doomT !== undefined) { const t = max(0, run.doomT); c.textAlign = 'center'; c.font = '900 22px Segoe UI,Arial'; c.fillStyle = t < 10 && (G.rt * 4 % 1) < .5 ? '#ffffff' : '#ff2a4a'; c.fillText('☠ ' + ceil(t), W / 2, 56); }
   if (DIRECTOR.active && G.room.type === 'challenge') { c.textAlign = 'center'; c.font = '900 28px Segoe UI,Arial'; c.fillStyle = '#ff8a2b'; c.fillText(ceil(DIRECTOR.challengeT), W / 2, 34); return; }
   const n = G.alive; if (!G.room.cleared && (n || DIRECTOR.active)) { c.textAlign = 'center'; c.font = '700 12px ui-monospace,monospace'; c.fillStyle = '#ff8ab0'; c.fillText(`◉ ${n}  ${['BUILD', 'PEAK', 'LULL'][DIRECTOR.phase]}`, W / 2, 26); }
   else if (G.room.open && G.room.type !== 'boss') { c.textAlign = 'center'; c.font = '700 12px ui-monospace,monospace'; c.fillStyle = '#50ffaa'; c.globalAlpha = .6 + .4 * sin(G.rt * 4); c.fillText('▲ EXIT OPEN ▲', W / 2, 26); c.globalAlpha = 1; }
@@ -314,8 +320,11 @@ function mapScreen() {
 // reward cards (after rooms)
 function rewardScreen(opts) {
   const run = G.run; G.paused = true; A.stopLoops(); document.body.classList.remove('play');
-  const n = max(2, 3 - (run.heat > 7 ? 1 : 0) + (opts.extra || 0)), rng = new RNG(`${run.seed}:${run.biome}:${run.map.cur}:offer:${run.rerollN || 0}:${opts.tag || ''}`);
-  const offers = opts.offers || rollOffers(n, opts.minRar || 0, rng);
+  const n = max(2, 3 - (run.heat > 7 ? 1 : 0) + (opts.extra || 0) + (B.extraChoice || 0)), rng = new RNG(`${run.seed}:${run.biome}:${run.map.cur}:offer:${run.rerollN || 0}:${opts.tag || ''}`);
+  const room = G.room, cap = opts.maxRar !== undefined ? opts.maxRar : room.type === 'boss' || opts.tag === 'chest' ? 3 : min(3, T.rarCap[run.biome] + (room.type === 'elite' || room.type === 'challenge' ? 1 : 0));
+  const offers = opts.offers || rollOffers(n, opts.minRar || 0, rng, cap);
+  if (opts.legendary && !opts.offers && !offers.some(u => u.rar === 3)) { const leg = Object.values(UPG).filter(u => u.rar === 3 && upgAllowed(u, run)); if (leg.length) offers[0] = rng.pick(leg); }
+  opts.offers = offers; const hasLeg = offers.some(u => u.rar === 3); if (hasLeg) setTimeout(() => { A.play('legendary'); }, 250);
   const done = () => { UI.clear(); G.paused = false; document.body.classList.add('play'); IN.clearHits(); if (opts.then) opts.then(); };
   const cards = offers.map((u, i) => cardHTML(u, UI.a(() => { pickUpgrade(u.id); done(); }) + ` data-nav`)).join('');
   UI.show(`<div class="panel clear" style="text-align:center"><h2>${opts.title || 'Choose an Upgrade'}</h2><p class="dim" style="margin-bottom:18px">${opts.sub || 'Press 1–3 or click a card'}</p><div class="cards">${cards}</div>

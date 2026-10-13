@@ -135,6 +135,7 @@ const SFX = {
   fuse: { v: 1.8, max: 4, pri: 2, f: (o, t, p) => { for (let i = 0; i < 5; i++) _o(o, 'square', 1500 + i * 150, 1500 + i * 150, t + i * .14 * (1 - i * .12), .04, .14); return .7; } },
   block: { max: 3, minor: 1, f: (o, t, p) => { _o(o, 'square', 1200 * p, 1150, t, .04, .14); _o(o, 'sine', 3300 * p, 3200, t, .08, .1); _n(o, 'bandpass', 5000, 5000, 4, t, .05, .2); return .1; } },
   spawn: { v: 1.6, max: 4, minor: 1, f: (o, t, p) => { _o(o, 'sine', 120 * p, 520 * p, t, .8, .1, .5, .8); _n(o, 'bandpass', 300, 2000, 3, t, .8, .08, .6); return .85; } },
+  legendary: { max: 1, pri: 5, f: (o, t, p) => { [523, 659, 784, 1046, 1318, 1568, 2093].forEach((f, i) => { _o(o, 'triangle', f, f, t + i * .07, 1.4, .13, .01); _o(o, 'sine', f * 2, f * 2, t + i * .07 + .02, 1, .05); }); _n(o, 'highpass', 5000, 9000, 1, t, 1.6, .15, .4); _o(o, 'sine', 65, 65, t, 1.5, .5, .05); return 1.7; } },
   heal2: { max: 3, minor: 1, f: (o, t, p) => { _o(o, 'sine', 880 * p, 1320 * p, t, .2, .08); return .2; } },
   burrow: { max: 3, minor: 1, f: (o, t, p) => { _n(o, 'lowpass', 400, 200, 2, t, .5, .3, .1); _o(o, 'sine', 60, 50, t, .5, .3); return .5; } },
   roar: { max: 1, pri: 4, f: (o, t, p) => { [55, 58.3, 82.4, 110].forEach(f => _o(o, 'sawtooth', f * p, f * .7 * p, t, 1.6, .2, .15)); _n(o, 'lowpass', 300, 2200, 1.5, t, 1.4, .5, .3); _fm(o, 70, 35, 300, t, 1.5, .3, 50); return 1.7; } },

@@ -366,7 +366,7 @@ function render(alpha, dt, wdt) {
     // lighting
     if (G.settings.lighting) { for (const l of room.lights) light(l.x, l.y, l.r, l.c, l.a * (.85 + .15 * sin(G.rt * 3 + l.x))); queueLights(alpha);
       for (let i = FLASHES.length - 1; i >= 0; i--) { const f = FLASHES[i]; f.t -= dt; if (f.t <= 0) { FLASHES.splice(i, 1); continue; } light(f.x, f.y, f.r, f.col, f.a * f.t / f.d); }
-      renderLighting(ctx, room.amb || bio.amb); } else { LQ.n = 0; FLASHES.length = 0; }
+      renderLighting(ctx, B && B.darkness ? mixHex(room.amb || bio.amb, '#000000', .55) : room.amb || bio.amb); } else { LQ.n = 0; FLASHES.length = 0; }
     drawActors(ctx, alpha);
     // emissive layer
     camXf(); ctx.globalCompositeOperation = 'lighter'; drawTele(ctx); camXf(); drawParticles(ctx, 1); drawBeams(ctx, wdt); drawEmissive(ctx, alpha);

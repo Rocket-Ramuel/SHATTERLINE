@@ -12,13 +12,14 @@ class Enemy {
     this.tx = 0; this.ty = 0; this.hasT = false; this.path = null; this.pathI = 0; this.pathReq = false; this.pathT = 0; this.strafe = rnd() < .5 ? 1 : -1; this.waitT = 0; this.kids = 0; this.parent = null;
     this.burrowed = false; this.size = 0; this.buffT = 0; this.shieldFlash = 0; this.noDrop = false; this.a = 0; this.b = 0; this.c = 0; this.d = 0; this.ax = 0; this.ay = 0; this.phase = 0; this.lastHitT = -9;
     this.envT = 0; this.healT = 0; this.healTarget = null; this.lungeT = 0; this.ally = null; this.contact = 0; this.lastLosT = 0; this.seenT = 0; this.lx = 0; this.ly = 0;
-    this.hasted = false; this.vamp = false; this.tl = null; this.sight = 0; this.alpha = 1; this.peek = 0; this.atkKind = ''; this.atkDur = 1; this.lockAng = false; this.onWall = null; this.dmgMul = 1; this.col = '#ffffff'; this.orbT = 0; this.bossId = ''; this.introT = 0; this.transT = 0; this.gen = null; this.waitT = 0; this.hold = 0; this.lift = 0; this.spin = 0; this.orbs = null; this.wind = 0; this.flood = null; this.floodQ = 0; this.shrink = 0; this.shrinkR = 0; this.lastAtk = ''; this.bdmg = 10;
+    this.untouchable = false; this.sliceId = 0; this.venomT = 0; this.c2 = 0; this.hasted = false; this.vamp = false; this.tl = null; this.sight = 0; this.alpha = 1; this.peek = 0; this.atkKind = ''; this.atkDur = 1; this.lockAng = false; this.onWall = null; this.dmgMul = 1; this.col = '#ffffff'; this.orbT = 0; this.bossId = ''; this.introT = 0; this.transT = 0; this.gen = null; this.waitT = 0; this.hold = 0; this.lift = 0; this.spin = 0; this.orbs = null; this.wind = 0; this.flood = null; this.floodQ = 0; this.shrink = 0; this.shrinkR = 0; this.lastAtk = ''; this.bdmg = 10;
   }
 }
 const EPOOL = []; for (let i = 0; i < 400; i++) EPOOL.push(new Enemy());
 const ROLE = { NONE: 0, PIN: 1, FLANK_L: 2, FLANK_R: 3, GUARD: 4, SNIPE: 5 }, ROLE_NAME = ['', 'PIN', 'FLANK L', 'FLANK R', 'GUARD', 'SNIPE'];
 function enemyScale() { const run = G.run, b = run ? run.biome : 0, l = run && run.map.cur ? run.map.byId[run.map.cur].layer : 0;
-  return { hp: [1, 1.45, 2, 2.7][b] * (1 + l * .05) * (1 + (run && run.heat > 0 ? .15 : 0)) * (1 + (B ? B.enemyHp : 0)), dmg: [1, 1.15, 1.3, 1.45][b] }; }
+  const S = T.scale, perf = run ? run.perf || 1 : 1;
+  return { hp: S.hp[b] * (1 + l * S.layerHp) * pow(perf, S.perfHp) * (1 + (run && run.heat > 0 ? .15 : 0)) * (1 + (B ? B.enemyHp : 0)), dmg: S.dmg[b] }; }
 function spawnEnemy(type, x, y, o = {}) {
   const def = T.E[type], e = EPOOL.pop() || new Enemy(), sc = enemyScale(); e.reset();
   e.id = _eid++; e.type = type; e.def = def; e.brain = BRAINS[def.b]; e.x = e.px = x; e.y = e.py = y; e.r = def.r; e.fly = !!def.fly;
@@ -346,6 +347,8 @@ const BRAINS = {
     active: (e, dt) => { e.c -= dt; strafeAround(e, e.def.range, eSpeed(e) * .5); if (e.c <= 0 && e.b < 2) { e.c = .14; e.b++; const a = leadAim(e, e.x, e.y, e.def.bspd); eShot(e.x, e.y, a, e.def.bspd, eDmg(e, e.def.dmg), 4, 'Wisp', 0, e); A.play('eshot', e.x, e.y, .3, 1.4); } },
     recover: .2,
   },
+  // STALKER (Hunted pact): relentless, unkillable, slow; its touch hurts
+  stalker: { acts: { stalk: { score: () => 1, run: e => { flowTo(e, eSpeed(e) * (e.dist > 500 ? 1.8 : 1)); if (e.dist < e.r + 14 && (e.c || 0) < G.time) { e.c = G.time + 1.2; e.contact = e.def.dmg * e.dmgMul; } } } }, fire() { } },
   // JUGGERNAUT: armoured advance, ground slam with shockwave ring
   brute: {
     acts: { push: { score: e => .5, run: e => { flowTo(e, eSpeed(e)); if (e.dist < 115 && canShoot(e) && tokenOk(e, 'melee')) { startAttack(e, e.def.wind, 'slam', 'growl', .7); e.tl = tele('circle', e.x, e.y, e.def.slamR, 0, e.def.wind, '#ff3b3b', 0, e); } } } },
@@ -418,7 +421,7 @@ const DIRECTOR = {
   stress: 0, phase: 0, phaseT: 0, budget: 0, spent: 0, waveT: 0, active: false, kills: 0, killRate: 0, history: new Float32Array(240), hi: 0, histT: 0,
   start(room) {
     const run = G.run, node = room.node, D = T.director;
-    let budget = (D.budget + node.layer * D.perLayer) * pow(D.biomeMul, run.biome) * (room.type === 'elite' ? D.eliteMul : 1) * (run.heat > 5 ? 1.25 : 1) * clamp(run.perf, .85, 1.2);
+    let budget = (D.budget + node.layer * D.perLayer) * pow(D.biomeMul, run.biome) * (room.type === 'elite' ? D.eliteMul : 1) * (run.heat > 5 ? 1.25 : 1) * pow(run.perf, T.scale.perfBudget);
     if (room.type === 'challenge') budget = 1e9;
     this.budget = budget; this.spent = 0; this.stress = 0; this.phase = 0; this.phaseT = 0; this.waveT = .6; this.active = true; this.kills = 0; this.killRate = 0;
     this.elites = room.type === 'elite' ? 2 + (run.biome >= 2 ? 1 : 0) : 0; this.challengeT = room.type === 'challenge' ? D.challengeTime : 0;
@@ -467,8 +470,8 @@ const DIRECTOR = {
       const type = rng.weighted(pool), def = T.E[type]; if (type === 'spire' && G.enemies.some(e => e.type === 'spire' && !e.dead)) continue;
       const pts = cand.filter(s => dist2(s.x, s.y, anchor.x, anchor.y) < 180 * 180), sp = pts.length ? rng.pick(pts) : rng.pick(cand);
       if (rng.chance(.25)) anchor = rng.pick(cand);
-      let elite = null; const ech = T.elite.chance * (1 + run.biome * .4) * (run.heat > 1 ? 2 : 1);
-      if ((this.elites > 0 && n === 0) || (def.cost >= 3 && rng.chance(ech))) { if (this.elites > 0) this.elites--; elite = [rng.pick(T.elite.mods)]; if (run.biome >= 2 && rng.chance(.35)) { const m2 = rng.pick(T.elite.mods); if (!elite.includes(m2)) elite.push(m2); } }
+      let elite = null; const ech = B.thorns ? .3 : T.elite.chance * (1 + run.biome * .4) * (run.heat > 1 ? 2 : 1);
+      if ((this.elites > 0 && n === 0) || ((def.cost >= 3 || B.thorns) && rng.chance(ech))) { if (this.elites > 0) this.elites--; elite = [rng.pick(T.elite.mods)]; if (run.biome >= 2 && rng.chance(.35)) { const m2 = rng.pick(T.elite.mods); if (!elite.includes(m2)) elite.push(m2); } }
       if (type === 'mite') { for (let i = 0; i < 3; i++) spawnEnemy('mite', sp.x + rr(-20, 20), sp.y + rr(-20, 20), { elite: i === 0 ? elite : null }); }
       else spawnEnemy(type, sp.x, sp.y, { elite });
       const c = def.cost * (type === 'mite' ? 3 : 1) * (elite ? 2.2 : 1); spent += c; this.spent += c; n++;

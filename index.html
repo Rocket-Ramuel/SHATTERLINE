@@ -59,6 +59,23 @@ p{margin:6px 0;line-height:1.45}
 .r3{background:linear-gradient(170deg,rgba(60,38,8,.97),rgba(18,8,4,.97))}
 .rC{border-color:var(--rc);--rc0:rgba(255,51,85,.8);background:linear-gradient(170deg,rgba(50,6,16,.97),rgba(14,2,6,.97))}.rC .rar{color:var(--rc)}
 .rS{border-color:var(--c3);--rc0:rgba(255,226,58,.9)}
+/* legendary: rotating gold rays + shimmer sweep */
+.card.r3{overflow:visible;z-index:2;animation:cardin .45s cubic-bezier(.2,1.3,.4,1) backwards,legglow 1.6s ease-in-out infinite alternate}
+.card.r3::before{content:"";position:absolute;inset:-60px;z-index:-1;pointer-events:none;background:repeating-conic-gradient(from 0deg,rgba(255,200,60,.22) 0 8deg,rgba(255,200,60,0) 8deg 24deg);
+ -webkit-mask:radial-gradient(circle,#000 30%,transparent 68%);mask:radial-gradient(circle,#000 30%,transparent 68%);animation:spin 9s linear infinite}
+.card.r3::after{content:"";position:absolute;inset:0;border-radius:6px;pointer-events:none;background:linear-gradient(115deg,transparent 35%,rgba(255,240,180,.35) 50%,transparent 65%);background-size:250% 100%;animation:sheen 2.4s ease-in-out infinite}
+.card.r3 .nm{color:#ffe9a8;text-shadow:0 0 12px #ffb020}
+.card.r3 .rar{font-size:12px;text-shadow:0 0 10px #ffb020}
+@keyframes legglow{from{box-shadow:0 0 18px rgba(255,176,32,.5)}to{box-shadow:0 0 46px rgba(255,176,32,.95),0 0 90px rgba(255,120,20,.35)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes sheen{0%{background-position:150% 0}60%,100%{background-position:-60% 0}}
+/* cursed pact: crimson, cracked, pulsing */
+.card.rC{background:radial-gradient(ellipse at 50% 0%,rgba(120,0,24,.55),transparent 60%),linear-gradient(170deg,rgba(40,3,12,.98),rgba(10,1,4,.98));animation:cardin .45s cubic-bezier(.2,1.3,.4,1) backwards,pactpulse 2.2s ease-in-out infinite}
+.card.rC::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;border-radius:6px;
+ background:linear-gradient(62deg,transparent 48%,#ff3355 49%,transparent 50%),linear-gradient(-38deg,transparent 70%,#ff3355 70.6%,transparent 71.3%),linear-gradient(15deg,transparent 22%,#ff3355 22.5%,transparent 23.2%)}
+.card.rC .nm{color:#ffd0d8;text-shadow:0 0 10px #ff2244;font-style:italic}
+.card .ds .good{font:800 10px var(--f);letter-spacing:.2em;margin-right:4px}.card .ds .bad{font-weight:700}
+@keyframes pactpulse{50%{box-shadow:0 0 30px rgba(255,30,70,.55),inset 0 0 30px rgba(255,0,40,.2)}}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:13px}
 .kv b{color:var(--c1);font-weight:600}
 .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
@@ -138,8 +155,9 @@ const T = {
   ST: {
     burnDps: 8, burnDur: 3, chillMax: 100, freezeDur: 1.5, chillDecay: 14, chillSlow: .5, shockDmg: 15, shockJumps: 3,
     shockRange: 140, shockFall: .85, poisonDps: 3, poisonMax: 20, poisonDecay: 1.6, critBase: .05, critMul: 2,
-    explodeR: 40, explodeDmg: .4, missileDmg: 45, seekerDmg: 20, shardDmg: 12, droneDmg: 10, droneRate: 3,
+    explodeR: 40, explodeDmg: .4, missileDmg: 36, missileEvery: 7, seekerDmg: 20, shardDmg: 12, droneDmg: 10, droneRate: 3,
     orbitalDmg: 15, sentryDmg: 20, teslaDmg: 30, teslaCd: 1.5, nukeDmg: 250, nukeKills: 25, bombDmg: 70,
+    regen: 1 / 3, healOrb: 10, healDrop: .03, roomHeal: .05, eliteHeal: 12,
     dashFireDur: 2.5, burnExplodeR: 60, ghostDur: 8, barrierCd: 10, impaleDmg: 40, capacitorN: 10,
   },
   // ---------------------------------------------------------------- weapons
@@ -149,15 +167,15 @@ const T = {
     sidearm: { n: 'Sidearm', k: 'gun', d: 'Reliable semi-precise pistol.', dmg: 17, rate: 6, mag: 14, rel: .8, spr: .035, cnt: 1, spd: 720, life: .8, sz: 3, kb: 90, rec: 3, shk: .1, snd: 'pistol', sh: 'bolt' },
     scatter: { n: 'Scattergun', k: 'gun', d: 'Eight pellets of close-range devastation.', dmg: 9, rate: 1.7, mag: 5, rel: 1.1, spr: .34, cnt: 8, spd: 640, spdVar: .18, life: .36, sz: 2.6, kb: 170, rec: 9, shk: .3, snd: 'shotgun', sh: 'pellet', drag: 2.2 },
     stinger: { n: 'Stinger SMG', k: 'gun', d: 'Hose of light rounds.', dmg: 8, rate: 15, mag: 36, rel: 1.15, spr: .15, cnt: 1, spd: 700, life: .55, sz: 2.4, kb: 35, rec: 1.5, shk: .05, snd: 'smg', sh: 'bolt' },
-    minigun: { n: 'Shredder', k: 'gun', d: 'Spins up to a storm. Slows you while firing.', dmg: 9, rate: 24, rateMin: 5, spin: .9, mag: 180, rel: 2.2, spr: .13, cnt: 1, spd: 760, life: .6, sz: 2.6, kb: 40, rec: 1.2, shk: .05, snd: 'minigun', sh: 'bolt', slow: .62 },
+    minigun: { n: 'Shredder', k: 'gun', d: 'Spins up to a storm. Slows you while firing.', dmg: 9, rate: 24, pc: .25, rateMin: 5, spin: .9, mag: 180, rel: 2.2, spr: .13, cnt: 1, spd: 760, life: .6, sz: 2.6, kb: 40, rec: 1.2, shk: .05, snd: 'minigun', sh: 'bolt', slow: .62 },
     rocket: { n: 'Rocketeer', k: 'gun', d: 'Accelerating rockets. Big boom.', dmg: 30, rate: 1.35, mag: 4, rel: 1.5, spr: .02, cnt: 1, spd: 260, acc: 1300, maxSpd: 820, life: 1.2, sz: 5, kb: 60, rec: 8, shk: .25, snd: 'rocket', sh: 'rocket', exp: 72, expD: 60 },
     rail: { n: 'Railgun', k: 'rail', d: 'Hitscan slug that pierces everything.', dmg: 115, rate: .9, mag: 3, rel: 1.4, spr: 0, range: 1400, kb: 220, rec: 14, shk: .45, snd: 'rail' },
-    beam: { n: 'Prism Beam', k: 'beam', d: 'Continuous beam that ramps up. Overheats.', dmg: 6, rate: 20, mag: 100, rel: 1.6, heat: 3.2, ramp: 1.6, rampMul: .6, range: 400, kb: 12, rec: .5, shk: .02, snd: 'beam' },
+    beam: { n: 'Prism Beam', k: 'beam', d: 'Continuous beam that ramps up. Overheats.', dmg: 6, rate: 20, mag: 100, rel: 1.6, heat: 3.2, ramp: 1.6, rampMul: .6, range: 400, kb: 12, rec: .5, shk: .02, snd: 'beam', pc: .3 },
     arc: { n: 'Arc Caster', k: 'arc', d: 'Lightning that leaps between enemies.', dmg: 26, rate: 3.6, mag: 18, rel: 1.2, range: 290, cone: .55, chain: 3, fall: .8, kb: 50, rec: 2, shk: .1, snd: 'arc' },
-    disc: { n: 'Disc Thrower', k: 'gun', d: 'Razor discs that pierce and return.', dmg: 21, rate: 2.6, mag: 6, rel: 1.2, spr: .03, cnt: 1, spd: 600, life: 1.3, sz: 6, kb: 70, rec: 4, shk: .1, snd: 'disc', sh: 'disc', pierce: 99, ret: .42 },
+    disc: { n: 'Disc Thrower', k: 'gun', d: 'Razor discs that pierce and return.', dmg: 30, rate: 2.6, mag: 6, rel: 1.2, spr: .03, cnt: 1, spd: 600, life: 1.3, sz: 6, kb: 70, rec: 4, shk: .1, snd: 'disc', sh: 'disc', pierce: 99, ret: .42 },
     flamer: { n: 'Flamethrower', k: 'gun', d: 'Short-range cone of burning plasma.', dmg: 4.5, rate: 32, mag: 120, rel: 1.6, spr: .26, cnt: 1, spd: 430, spdVar: .25, life: .34, sz: 6, kb: 8, rec: .6, shk: .015, snd: 'flame', sh: 'flame', pierce: 99, burn: .5, drag: 2.5 },
     bow: { n: 'Charge Bow', k: 'bow', d: 'Hold to draw. Full draw pierces and always crits.', dmg: 24, dmgMax: 120, charge: .75, rate: 3, mag: 99, rel: .1, spr: .0, spd: 520, spdMax: 1200, life: .9, sz: 3.5, kb: 160, rec: 6, shk: .22, snd: 'bow', sh: 'arrow' },
-    orbit: { n: 'Orbit Blades', k: 'orbit', d: 'Blades circle you; fire to fling one out.', dmg: 20, rate: 3.2, mag: 4, rel: 1.2, spd: 560, life: .5, sz: 7, kb: 120, rec: 3, shk: .08, snd: 'blade', sh: 'blade', orbitR: 46, orbitSpd: 6.5, orbitDmg: 12, pierce: 99, ret: .5 },
+    orbit: { n: 'Orbit Blades', k: 'orbit', d: 'Blades circle you; fire to fling one out.', dmg: 34, rate: 3.6, mag: 5, rel: 1.2, spd: 620, life: .45, sz: 8, kb: 120, rec: 3, shk: .08, snd: 'blade', sh: 'blade', orbitR: 54, orbitSpd: 6.5, orbitDmg: 18, pierce: 99, ret: .5, pc: .6 },
     mines: { n: 'Mine Layer', k: 'gun', d: 'Lobs proximity mines that arm and detonate.', dmg: 10, rate: 2.2, mag: 6, rel: 1.4, spr: .05, cnt: 1, spd: 520, life: .55, sz: 5, kb: 30, rec: 4, shk: .08, snd: 'mine', sh: 'mine', drag: 5, mine: 1, exp: 78, expD: 75, prox: 52, arm: .3, mineLife: 14 },
   },
   // ---------------------------------------------------------------- enemies
@@ -179,6 +197,7 @@ const T = {
     mimic: { n: 'Mimic', hp: 160, spd: 135, r: 14, col: '#ffcf5a', dmg: 16, b: 'mimic', cost: 0, bspd: 200, wind: .5, cd: 1.8, d: 'That chest has teeth.' },
     gel: { n: 'Gel', hp: 64, spd: 72, r: 15, col: '#7dff3a', dmg: 12, b: 'gel', cost: 3, hop: 330, wind: .45, cd: 1.6, d: 'Hops at you and splits when popped.' },
     wisp: { n: 'Wisp', hp: 22, spd: 150, r: 8, col: '#e05cff', dmg: 9, b: 'wisp', cost: 2, fly: 1, range: 190, bspd: 230, wind: .4, cd: 1.8, d: 'Flying drone. Ignores cover, orbits, harasses.' },
+    stalker: { n: 'Stalker', hp: 1e9, spd: 78, r: 13, col: '#ff0a3c', dmg: 18, b: 'stalker', cost: 0, d: 'Born of The Hunted pact. Cannot be killed — only outrun.' },
     jugg: { n: 'Juggernaut', hp: 270, spd: 55, r: 19, col: '#ff3b3b', dmg: 28, b: 'brute', cost: 9, armor: 3, slamR: 95, wind: .95, cd: 3, bspd: 160, d: 'Armored. Ground slam + shockwave.' },
   },
   elite: {
@@ -193,6 +212,11 @@ const T = {
     bloom: { n: 'MOTHER BLOOM', t: 'Heart of the Undergrowth', hp: 5400, r: 46, col: '#7dff3a' },
     arch: { n: 'THE ARCHITECT', t: 'Mind of the Core', hp: 7200, r: 42, col: '#ffcc33' },
   },
+  // difficulty curve: enemy HP/damage per biome, per map layer, and adaptive "threat" (run.perf) from clear speed
+  scale: { hp: [1, 1.5, 2.2, 3.1, 4.2], dmg: [1, 1.12, 1.25, 1.38, 1.5], layerHp: .06, perfMin: .85, perfMax: 1.9, perfHp: .85, perfBudget: .5,
+    fastRate: 1.35, slowRate: .5, perfUp: .09, perfDown: .07, heavyHit: .35 },
+  // rarity caps: highest rarity offered from normal rooms per biome (elites +1, bosses/treasure uncapped)
+  rarCap: [1, 2, 3, 3, 3],
   // ---------------------------------------------------------------- AI
   ai: {
     thinkHz: 5, losHz: 6, tokensRanged: [3, 4, 5, 6], tokensMelee: [2, 3, 3, 4], accuracy: [.55, .68, .78, .86], accHeat: .025,
@@ -225,7 +249,7 @@ const T = {
   // ---------------------------------------------------------------- economy
   gold: { enemy: 1.4, elite: 6, room: 12, boss: 80, startGold: 0 },
   price: { rar: [45, 80, 140, 220, 60], heal: 40, weapon: 90, active: 75, reroll: 25 },
-  rarityW: [62, 27, 9, 2], luckW: [-8, 4, 3, 1], curseChance: .1,
+  rarityW: [60, 28, 10, 2.5], luckW: [-8, 4, 3, 1.2], curseChance: .12,
   rest: { heal: .4, maxHp: 15 },
   // ---------------------------------------------------------------- characters
   CH: {
@@ -289,8 +313,8 @@ const UPG_ROWS = [
   ['highvolt', 'shock', 1, 'High Voltage', 'Chain lightning deals +{shockPct%} damage.', { shockPct: .6 }],
   ['stormdash', 'shock', 1, 'Storm Dash', 'Dashing zaps up to {dashShock} enemies within 170 for 25 damage.', { dashShock: 4 }],
   ['tesla', 'shock', 2, 'Tesla Coil', 'Every {teslaCd}s, lightning strikes the nearest enemy within 240 ({teslaDmg} dmg, chains).', { tesla: 1 }],
-  ['capacitor', 'shock', 1, 'Capacitor', 'Every {capacitorN}th hit releases a burst that strikes {capacitor} enemies.', { capacitor: 6 }],
-  ['ball', 'shock', 2, 'Ball Lightning', 'Every 8th shot launches a ball of lightning that zaps nearby enemies.', { ballLight: 1 }],
+  ['capacitor', 'shock', 1, 'Capacitor', 'Landing hits charges a capacitor (~{capacitorN} pistol hits) that bursts into {capacitor} enemies.', { capacitor: 6 }],
+  ['ball', 'shock', 2, 'Ball Lightning', 'Sustained fire launches a ball of lightning about every 1.3s that zaps nearby enemies.', { ballLight: 1 }],
   ['venom', 'poison', 0, 'Venom Tips', 'Hits add {poison} <b>Poison</b> stack ({poisonDps} dps per stack, max {poisonMax}).', { poison: 1 }],
   ['virulence', 'poison', 0, 'Virulence', '+{poisonMaxAdd} max Poison stacks and +{poisonDpsAdd} dps per stack.', { poisonMaxAdd: 10, poisonDpsAdd: 1 }],
   ['toxcloud', 'poison', 1, 'Toxic Cloud', 'Poisoned enemies burst into a toxic cloud on death.', { poisonCloud: 1 }],
@@ -318,7 +342,7 @@ const UPG_ROWS = [
   ['clusterkill', 'split', 1, 'Cluster Kill', 'Kills burst into {killSplit} fragments.', { killSplit: 5 }],
   ['guidance', 'homing', 0, 'Guidance Chip', 'Bullets gently home toward enemies.', { homing: 2.5 }],
   ['lockon', 'homing', 1, 'Lock-On', 'Strong homing and +{crit%} crit chance.', { homing: 4, crit: .05 }],
-  ['missilepod', 'homing', 1, 'Missile Pod', 'Every 7th shot fires a homing missile ({missileDmg} dmg explosion). Stacks reduce the interval.', { missile: 1 }],
+  ['missilepod', 'homing', 1, 'Missile Pod', 'Sustained fire launches a homing missile about every 1.2s ({missileDmg} dmg explosion). Stacks fire faster.', { missile: 1 }],
   ['swarm', 'homing', 2, 'Swarm Missiles', 'Missiles launch in volleys of +{missileCount}.', { missileCount: 2 }, { req: 'missile' }],
   ['seekers', 'homing', 1, 'Seeker Swarm', 'Kills launch a homing seeker ({seekerDmg} dmg).', { killSeeker: 1 }],
   ['smartrounds', 'homing', 0, 'Smart Rounds', 'Mild homing and +{pspd%} projectile speed.', { homing: 1.5, pspd: .15 }],
@@ -357,21 +381,64 @@ const UPG_ROWS = [
   ['secondwind', 'core', 1, 'Second Wind', 'Clearing a room below 40% HP heals {secondWind%} max HP.', { secondWind: .3 }],
   ['bigmag', 'core', 0, 'Extended Mag', '+{mag%} magazine size.', { mag: .4 }],
   ['heavy', 'core', 0, 'Heavy Rounds', '+{dmg%} damage and +{kb%} knockback.', { dmg: .15, kb: .3 }],
-  ['glass', 'curse', 4, 'Glass Cannon', '+{dmg%} damage. <span class=bad>-40% max HP.</span>', { dmg: .6, maxHpPct: -.4 }],
-  ['bloodpact', 'curse', 4, 'Blood Pact', 'Kills heal {killHeal} HP. +{rate%} fire rate. <span class=bad>All other healing is disabled.</span>', { killHeal: 2, rate: .2, noHeal: 1 }],
-  ['berserker', 'curse', 4, 'Berserker', 'Up to +100% damage as your HP drops. <span class=bad>{maxHp} max HP.</span>', { berserk: 1, maxHp: -25 }],
-  ['hairtrigger', 'curse', 4, 'Hair Trigger', '+{rate%} fire rate. <span class=bad>+60% spread, -10% damage.</span>', { rate: .5, spread: -.6, dmg: -.1 }],
-  ['greed', 'curse', 4, 'Greed', '+{gold%} gold. <span class=bad>Enemies have +25% HP.</span>', { gold: 1, enemyHp: .25 }],
-  ['overcharged', 'curse', 4, 'Overcharged Core', '+{dmg%} damage. <span class=bad>Reloading costs {reloadHurt} HP.</span>', { dmg: .4, reloadHurt: 3 }],
-  ['rift', 'curse', 4, 'Unstable Rift', 'Each cleared room grants a random upgrade. <span class=bad>Enemies move 15% faster.</span>', { chaos: 1, enemySpd: .15 }],
-  ['heavyheart', 'curse', 4, 'Heavy Heart', '+{maxHp} max HP. <span class=bad>-20% move speed, +40% dash cooldown.</span>', { maxHp: 80, speed: -.2, dashCd: -.4 }],
-  ['cursedammo', 'curse', 4, 'Cursed Ammo', '+{dmg%} damage. <span class=bad>You take +30% damage.</span>', { dmg: .35, dmgTaken: .3 }],
+  // ---- healing & utility
+  ['vitalcore', 'core', 0, 'Vital Core', '+{maxHp} max HP and +{regenPct%} regeneration.', { maxHp: 15, regenPct: .5 }],
+  ['bandolier', 'core', 0, 'Bandolier', '+{mag%} magazine size and +{reload%} reload speed.', { mag: .25, reload: .15 }],
+  ['nanite', 'core', 1, 'Nanite Weave', 'Regenerate +{regenPct%} faster (base: 1 HP every 3s).', { regenPct: 1 }],
+  ['fieldkit', 'core', 1, 'Field Kit', 'Heal orbs drop {healDrop%} more often and heal +{healOrbAdd} HP.', { healDrop: 1, healOrbAdd: 5 }],
+  ['scavenger', 'core', 1, 'Scavenger', 'Picking up gold heals {goldHeal} HP per 10 gold.', { goldHeal: 1 }],
+  ['reactive', 'core', 1, 'Reactive Plating', 'Taking damage releases a shockwave that erases nearby bullets and knocks enemies back.', { reactive: 1 }, { max: 1 }],
+  ['leech', 'core', 2, 'Leech Rounds', 'Critical hits heal {critHeal} HP (max 4 HP per second).', { critHeal: 1 }],
+  ['secondheart', 'core', 2, 'Second Heart', 'Healing beyond max HP becomes a shield (up to {overheal}).', { overheal: 30 }, { max: 1 }],
+  // ---- new build-arounds
+  ['steadyhand', 'crit', 0, 'Steady Hand', '+{crit%} crit chance and {spread%} tighter spread.', { crit: .04, spread: .25 }],
+  ['sprinter', 'speed', 0, 'Sprinter', '+{speed%} move speed and -{dashCd%} dash cooldown.', { speed: .08, dashCd: .1 }],
+  ['adrenal', 'speed', 1, 'Adrenal Surge', 'Below 50% HP: +25% move speed and +25% fire rate.', { adrenal: 1 }, { max: 1 }],
+  ['hunter', 'crit', 1, "Hunter's Mark", 'The enemy you hit most recently takes +{mark%} damage from everything.', { mark: .25 }],
+  ['meltdown', 'fire', 2, 'Meltdown', 'Burning enemies take +{meltdown%} damage from all sources.', { meltdown: .3 }],
+  ['cryostasis', 'frost', 2, 'Cryostasis', 'Freezing an enemy releases a frost burst (40 Chill to enemies within 90).', { cryoBurst: 1 }],
+  ['supercharge', 'shock', 2, 'Supercharge', 'Chain lightning can crit and jumps +{shockAdd} time.', { shockCrit: 1, shockAdd: 1 }],
+  ['venomsac', 'poison', 2, 'Venom Sac', 'Enemies that reach max Poison erupt for {venomBurst} damage to nearby enemies and keep half their stacks.', { venomBurst: 60 }],
+  ['shrapnel', 'split', 2, 'Shrapnel Storm', 'Fragments deal +{fragDmg%} more damage.', { fragDmg: .25 }],
+  ['rebound', 'ricochet', 2, 'Rebound Master', '+{bounce} bounces. Bounced bullets pierce +1 enemy.', { bounce: 2, bouncePierce: 1 }],
+  ['warhead', 'explosive', 2, 'Warhead', 'Your first hit each second explodes for 100% of its damage (radius 60).', { warhead: 1 }, { max: 1 }],
+  ['guillotine', 'crit', 2, 'Guillotine', 'Non-boss enemies below {guillotine%} HP are executed instantly.', { guillotine: .12 }],
+  ['phaseshift', 'speed', 2, 'Phase Shift', 'Dashing through enemies slices them for {phaseDmg} damage. +0.15s dash invulnerability.', { phaseDmg: 40 }],
+  ['rearguard', 'summon', 2, 'Rear Guard', 'Every 2s a guardian shot strikes the closest enemy behind you ({rearDmg} dmg).', { rearDmg: 30 }],
+  // ---- LEGENDARY: transformative, max 1 each
+  ['blacksun', 'fire', 3, 'Black Sun', 'Every 5s a miniature sun ignites at your cursor for 3s, dragging enemies in and burning everything nearby ({sunDps} dps).', { blacksun: 1, sunDps: 45 }, { max: 1 }],
+  ['hydra', 'split', 3, 'Hydra Protocol', 'Each kill grants +1 projectile per shot for 4s (up to +5).', { hydra: 1 }, { max: 1 }],
+  ['timefracture', 'speed', 3, 'Time Fracture', 'Every 7s time stops for 1.2s — enemies and their bullets freeze while you keep moving and firing.', { fracture: 1 }, { max: 1 }],
+  ['mirrorself', 'summon', 3, 'Mirror Self', 'A shadow clone follows your movement and copies every shot at 60% damage.', { clone: 1 }, { max: 1 }],
+  ['overkill', 'crit', 3, 'Overkill Engine', 'Excess damage from a kill leaps to the nearest enemy (up to 3 times).', { overkill: 1 }, { max: 1 }],
+  ['stormheart', 'shock', 3, 'Eye of the Storm', 'Every 0.6s lightning strikes a random enemy within 280 (25 dmg, chains).', { stormheart: 1 }, { max: 1 }],
+  ['permafrost', 'frost', 3, 'Permafrost', 'Frozen enemies take triple damage, and killing one freezes everything within 90.', { permafrost: 1 }, { max: 1 }],
+  ['plaguebearer', 'poison', 3, 'Plague Bearer', 'A toxic aura gives enemies within 130 four Poison per second, and Poison never decays.', { plaguebearer: 1 }, { max: 1 }],
+  ['deathblossom', 'ricochet', 3, 'Death Blossom', 'Every reload unleashes a ring of 24 ricocheting blades (60% weapon damage).', { blossom: 1 }, { max: 1 }],
+  ['midas', 'core', 3, 'Midas Rounds', '+1% damage per 10 gold you hold (max +80%). Kills drop extra gold.', { midas: 1 }, { max: 1 }],
+  ['eventhorizon', 'explosive', 3, 'Event Horizon', 'Explosions are 30% larger and drag enemies inward. Every 4th explosion collapses into a black hole.', { horizon: 1 }, { max: 1 }],
+  ['orbitallance', 'homing', 3, 'Orbital Lance', 'Every 2.5s a beam from orbit strikes the toughest enemy on screen (120 dmg).', { lance: 1 }, { max: 1 }],
+  ['twinfang', 'pierce', 3, 'Twin Fang', 'Dashing fires a free 5-shot fan of your weapon (no ammo).', { twinfang: 1 }, { max: 1 }],
+  // ---- CURSED PACTS: rule-changing deals, max 1 each
+  ['hunted', 'curse', 4, 'The Hunted', '<span class=good>BOON</span> +40% damage.<br><span class=bad>BANE</span> An unkillable Stalker hunts you in every fight.', { dmg: .4, hunted: 1 }, { max: 1 }],
+  ['bloodmoon', 'curse', 4, 'Blood Moon', '<span class=good>BOON</span> Every kill grants 2 Blood, a shield (max 40) that absorbs damage.<br><span class=bad>BANE</span> You can never heal.', { bloodmoon: 1, noHeal: 1 }, { max: 1 }],
+  ['doomsday', 'curse', 4, 'Doomsday Clock', '<span class=good>BOON</span> +1 upgrade choice and double gold.<br><span class=bad>BANE</span> Fights run on a 45s clock — at zero you lose 25% max HP and it restarts.', { doomsday: 1, gold: 1, extraChoice: 1 }, { max: 1 }],
+  ['haunted', 'curse', 4, 'Haunted Arsenal', '<span class=good>BOON</span> +35% damage and +25% fire rate.<br><span class=bad>BANE</span> Every 20s your weapon turns into a random weapon.', { dmg: .35, rate: .25, haunted: 1 }, { max: 1 }],
+  ['recoil', 'curse', 4, 'Recoil Engine', '<span class=good>BOON</span> +55% damage.<br><span class=bad>BANE</span> Every shot shoves you backwards.', { dmg: .55, recoilCurse: 1 }, { max: 1 }],
+  ['mirrorcurse', 'curse', 4, 'Mirror Curse', '<span class=good>BOON</span> +60% damage.<br><span class=bad>BANE</span> A quarter of your shots that hit walls bounce back at you.', { dmg: .6, mirrorCurse: 1 }, { max: 1 }],
+  ['vengeful', 'curse', 4, 'Vengeful Dead', '<span class=good>BOON</span> +60% gold and +20% damage.<br><span class=bad>BANE</span> Every enemy fires one last shot at you as it dies.', { gold: .6, dmg: .2, vengeful: 1 }, { max: 1 }],
+  ['thorns', 'curse', 4, 'Crown of Thorns', '<span class=good>BOON</span> Far better upgrade rarities.<br><span class=bad>BANE</span> 30% of enemies are elites.', { luck: 4, thorns: 1 }, { max: 1 }],
+  ['darkness', 'curse', 4, 'Creeping Dark', '<span class=good>BOON</span> +25% crit chance and +60% crit damage.<br><span class=bad>BANE</span> Your light shrinks; enemies beyond 230 fade into darkness.', { crit: .25, critDmg: .6, darkness: 1 }, { max: 1 }],
+  ['toll', 'curse', 4, "Ferryman's Toll", '<span class=good>BOON</span> Shop items are free.<br><span class=bad>BANE</span> Every purchase costs 15% of your max HP.', { toll: 1 }, { max: 1 }],
+  ['frenzy', 'curse', 4, 'Frenzy', '<span class=good>BOON</span> +30% fire rate and +20% damage.<br><span class=bad>BANE</span> Your weapon never stops firing.', { rate: .3, dmg: .2, frenzy: 1 }, { max: 1 }],
+  ['shattered', 'curse', 4, 'Shattered Aegis', '<span class=good>BOON</span> Perfect dodges heal 4 HP and grant +40% damage for 3s.<br><span class=bad>BANE</span> Invulnerability after being hit lasts 80% less.', { shattered: 1 }, { max: 1 }],
+  ['rift', 'curse', 4, 'Unstable Rift', '<span class=good>BOON</span> Every cleared room grants a random upgrade.<br><span class=bad>BANE</span> Enemies move 15% faster.', { chaos: 1, enemySpd: .15 }, { max: 1 }],
 ];
 const FAM = {
   fire: { n: 'Fire', c: '#ff7a2b' }, frost: { n: 'Frost', c: '#7fdcff' }, shock: { n: 'Shock', c: '#b98bff' }, poison: { n: 'Poison', c: '#7dff3a' },
   ricochet: { n: 'Ricochet', c: '#ffd23a' }, pierce: { n: 'Pierce', c: '#ff5ab4' }, split: { n: 'Split', c: '#3dffd8' }, homing: { n: 'Homing', c: '#ff9a5a' },
   explosive: { n: 'Explosive', c: '#ff4a3a' }, summon: { n: 'Summon', c: '#5dff8a' }, crit: { n: 'Crit', c: '#ffef7a' }, speed: { n: 'Speed', c: '#6ab8ff' },
-  core: { n: 'Core', c: '#c8d4ea' }, curse: { n: 'Cursed', c: '#ff3355' },
+  core: { n: 'Core', c: '#c8d4ea' }, curse: { n: 'Pact', c: '#ff3355' },
 };
 // synergies: two families with ≥2 picks each → auto-activate
 const SYN_ROWS = [
@@ -550,7 +617,7 @@ const G = {
   state: 'boot', time: 0, rt: 0, tick: 0, timeScale: 1, tsTarget: 1, tsTimer: 0, hitstop: 0, enemyTS: 1, paused: false,
   run: null, room: null, player: null, enemies: [], bullets: [], ebullets: [], pickups: [], props: [], allies: [], zones: [], fxq: [],
   grid: new Grid(64, 2048), cam: { x: 0, y: 0, px: 0, py: 0, zoom: 1, zt: 1, trauma: 0, sx: 0, sy: 0, rot: 0, focus: null, focusT: 0 },
-  settings: null, meta: null, qpad: 28, alive: 0, debug: { fps: false, ai: false, flow: false, hit: false, stress: false }, bot: false,
+  settings: null, meta: null, qpad: 28, alive: 0, cloneMul: 1, cloning: false, markE: null, debug: { fps: false, ai: false, flow: false, hit: false, stress: false }, bot: false,
   stats: { frameMs: 0, simMs: 0, renderMs: 0, fps: 60, ticks: 0 },
 };
 const STEP = 1 / T.sim.hz;
@@ -725,6 +792,7 @@ const SFX = {
   fuse: { v: 1.8, max: 4, pri: 2, f: (o, t, p) => { for (let i = 0; i < 5; i++) _o(o, 'square', 1500 + i * 150, 1500 + i * 150, t + i * .14 * (1 - i * .12), .04, .14); return .7; } },
   block: { max: 3, minor: 1, f: (o, t, p) => { _o(o, 'square', 1200 * p, 1150, t, .04, .14); _o(o, 'sine', 3300 * p, 3200, t, .08, .1); _n(o, 'bandpass', 5000, 5000, 4, t, .05, .2); return .1; } },
   spawn: { v: 1.6, max: 4, minor: 1, f: (o, t, p) => { _o(o, 'sine', 120 * p, 520 * p, t, .8, .1, .5, .8); _n(o, 'bandpass', 300, 2000, 3, t, .8, .08, .6); return .85; } },
+  legendary: { max: 1, pri: 5, f: (o, t, p) => { [523, 659, 784, 1046, 1318, 1568, 2093].forEach((f, i) => { _o(o, 'triangle', f, f, t + i * .07, 1.4, .13, .01); _o(o, 'sine', f * 2, f * 2, t + i * .07 + .02, 1, .05); }); _n(o, 'highpass', 5000, 9000, 1, t, 1.6, .15, .4); _o(o, 'sine', 65, 65, t, 1.5, .5, .05); return 1.7; } },
   heal2: { max: 3, minor: 1, f: (o, t, p) => { _o(o, 'sine', 880 * p, 1320 * p, t, .2, .08); return .2; } },
   burrow: { max: 3, minor: 1, f: (o, t, p) => { _n(o, 'lowpass', 400, 200, 2, t, .5, .3, .1); _o(o, 'sine', 60, 50, t, .5, .3); return .5; } },
   roar: { max: 1, pri: 4, f: (o, t, p) => { [55, 58.3, 82.4, 110].forEach(f => _o(o, 'sawtooth', f * p, f * .7 * p, t, 1.6, .2, .15)); _n(o, 'lowpass', 300, 2200, 1.5, t, 1.4, .5, .3); _fm(o, 70, 35, 300, t, 1.5, .3, 50); return 1.7; } },
@@ -1228,7 +1296,7 @@ function render(alpha, dt, wdt) {
     // lighting
     if (G.settings.lighting) { for (const l of room.lights) light(l.x, l.y, l.r, l.c, l.a * (.85 + .15 * sin(G.rt * 3 + l.x))); queueLights(alpha);
       for (let i = FLASHES.length - 1; i >= 0; i--) { const f = FLASHES[i]; f.t -= dt; if (f.t <= 0) { FLASHES.splice(i, 1); continue; } light(f.x, f.y, f.r, f.col, f.a * f.t / f.d); }
-      renderLighting(ctx, room.amb || bio.amb); } else { LQ.n = 0; FLASHES.length = 0; }
+      renderLighting(ctx, B && B.darkness ? mixHex(room.amb || bio.amb, '#000000', .55) : room.amb || bio.amb); } else { LQ.n = 0; FLASHES.length = 0; }
     drawActors(ctx, alpha);
     // emissive layer
     camXf(); ctx.globalCompositeOperation = 'lighter'; drawTele(ctx); camXf(); drawParticles(ctx, 1); drawBeams(ctx, wdt); drawEmissive(ctx, alpha);
@@ -1275,6 +1343,7 @@ function drawWorld(ctx, alpha, wdt) {
   // ground zones (non-emissive part)
   for (const z of G.zones) { if (!inView(z.x, z.y, z.r)) continue; const f = min(1, z.t / .4, (z.dur - z.t) / .2 + .2);
     if (z.kind === 'acid' || z.kind === 'toxic' || z.kind === 'eacid') { ctx.globalAlpha = .28 * f; ctx.fillStyle = '#5dff2a'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill(); }
+    else if (z.kind === 'sun') { ctx.globalAlpha = f; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(z.x, z.y, 18, 0, TAU); ctx.fill(); }
     else if (z.kind === 'hole') { ctx.globalAlpha = .85 * f; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(z.x, z.y, 26 + 6 * sin(G.rt * 20), 0, TAU); ctx.fill(); }
     else if (z.kind === 'eice') { ctx.globalAlpha = .25 * f; ctx.fillStyle = '#9fe4ff'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill(); } }
   ctx.globalAlpha = 1;
@@ -1328,6 +1397,7 @@ function drawEnemy(ctx, e, alpha) {
   const rot = ROT_FREE[e.type] ? (e.type === 'spire' ? e.a || 0 : 0) : e.ang;
   const wind = e.atkPhase === 1 ? 1 - e.atkT / e.atkDur : 0, fl = e.flash > 0;
   ctx.globalAlpha = e.alpha !== undefined ? e.alpha : 1; if (e.type === 'phantom') ctx.globalAlpha *= .75 + .25 * sin(t * 9);
+  if (B && B.darkness && G.player) ctx.globalAlpha *= clamp(1 - (hypot(x - G.player.x, y - G.player.y) - 230) / 120, .07, 1);
   xf(ctx, x, y + lift, rot, sx, sy); ctx.lineWidth = (2 + wind * 2) / e.r;
   ctx.fillStyle = fl ? '#ffffff' : e.frozenT > 0 ? '#5a8fb0' : wind > 0 ? mixHex(darkOf(e.col), e.col, wind * .5) : darkOf(e.col); ctx.fill(sh);
   ctx.strokeStyle = fl ? '#ffffff' : e.frozenT > 0 ? '#bdf0ff' : wind > .6 && (t * 20 % 1) < .5 ? '#ffffff' : e.col; ctx.stroke(sh);
@@ -1396,6 +1466,7 @@ function drawAlly(ctx, a, alpha) {
   else if (a.kind === 'sentry') { xf(ctx, x, y, 0, 9, 9); ctx.fillStyle = '#0d2a18'; ctx.fill(SH.hex); ctx.lineWidth = .2; ctx.strokeStyle = '#5dff8a'; ctx.stroke(SH.hex); xf(ctx, x, y, a.ang, 9, 9); ctx.fillStyle = '#5dff8a'; ctx.fillRect(.2, -.18, 1.1, .36); }
   else if (a.kind === 'orbital') { xf(ctx, x, y, G.rt * 8, 5, 5); ctx.fillStyle = '#5dff8a'; ctx.fill(SH.tri); }
   else if (a.kind === 'ghost') { const sh = SH[a.type] || SH.circ; xf(ctx, x, y, atan2(a.vy, a.vx), a.r, a.r); ctx.globalAlpha = .5 + .2 * sin(G.rt * 8); ctx.fillStyle = 'rgba(127,246,255,.25)'; ctx.fill(sh); ctx.lineWidth = 2 / a.r; ctx.strokeStyle = '#7ff6ff'; ctx.stroke(sh); ctx.globalAlpha = 1; }
+  else if (a.kind === 'clone') { const p = G.player; xf(ctx, x, y, a.ang, 13, 13); ctx.globalAlpha = .55 + .15 * sin(G.rt * 6); ctx.fillStyle = '#12051e'; ctx.fill(SH.player); ctx.lineWidth = .14; ctx.strokeStyle = '#b05cff'; ctx.stroke(SH.player); ctx.globalAlpha = 1; }
   else if (a.kind === 'decoy') { const p = G.player; xf(ctx, x, y, p.ang, 13, 13); ctx.globalAlpha = .45 + .3 * sin(G.rt * 15); ctx.lineWidth = .12; ctx.strokeStyle = p.color; ctx.stroke(SH.player); ctx.globalAlpha = 1; }
 }
 function drawPlayer(ctx, p, alpha) {
@@ -1422,6 +1493,8 @@ function drawEmissive(ctx, alpha) {
   for (const z of G.zones) { if (!inView(z.x, z.y, z.r)) continue; const f = min(1, z.t / .4);
     if (z.kind === 'fire' || z.kind === 'efire') { ctx.globalAlpha = .5 * f; ctx.drawImage(lightSprite('#ff6a1a'), z.x - z.r * 1.3, z.y - z.r * 1.3, z.r * 2.6, z.r * 2.6); if (rnd() < .2) emit(PK.DOT, z.x + rr(-z.r, z.r) * .7, z.y + rr(-z.r, z.r) * .7, 0, -60, .4, 2, C_FIRE, 1); }
     else if (z.kind === 'tesla') { ctx.globalAlpha = .7; ctx.strokeStyle = '#c39bff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.stroke(); ctx.globalAlpha = .15; ctx.fillStyle = '#b98bff'; ctx.fill(); }
+    else if (z.kind === 'sun') { const pu = 1 + .08 * sin(t * 12); ctx.globalAlpha = .9 * f; ctx.drawImage(lightSprite('#ffb020'), z.x - z.r * 1.4 * pu, z.y - z.r * 1.4 * pu, z.r * 2.8 * pu, z.r * 2.8 * pu);
+      ctx.drawImage(lightSprite('#fff27a'), z.x - 34, z.y - 34, 68, 68); ctx.strokeStyle = '#ffe23a'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = i / 10 * TAU + t; ctx.moveTo(z.x + cos(a) * 26, z.y + sin(a) * 26); ctx.lineTo(z.x + cos(a) * (40 + 8 * sin(t * 9 + i)), z.y + sin(a) * (40 + 8 * sin(t * 9 + i))); } ctx.stroke(); }
     else if (z.kind === 'hole') { ctx.globalAlpha = .8; ctx.strokeStyle = '#b98bff'; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(z.x, z.y, 30 + ((t * 80 + i * 40) % 140), 0, TAU); ctx.stroke(); } } }
   ctx.globalAlpha = 1;
   // enemy windup glows, warden auras, healer beams, sniper laser sights
@@ -1432,6 +1505,7 @@ function drawEmissive(ctx, alpha) {
     if (e.type === 'mender' && e.healTarget && !e.healTarget.dead) { const h = e.healTarget; ctx.globalAlpha = .6 + .3 * sin(t * 20); ctx.strokeStyle = '#3dffa8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(h.x, h.y); ctx.stroke(); }
     if (e.type === 'lancer' && e.atkPhase === 1 && e.sight > 0) { const a = e.aim, L = raycast(x, y, cos(a), sin(a), 1200, 0), f = e.sight;
       ctx.globalAlpha = .25 + f * .7; ctx.strokeStyle = f > .72 ? '#ffffff' : '#ff3df0'; ctx.lineWidth = .8 + f * 1.6; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + cos(a) * L, y + sin(a) * L); ctx.stroke(); }
+    if (e === G.markE) { ctx.globalAlpha = .9; ctx.strokeStyle = '#ffef7a'; ctx.lineWidth = 1.5; const r = e.r + 7, s = G.rt * 2; for (let k = 0; k < 4; k++) { const a = s + k * PI / 2; ctx.beginPath(); ctx.arc(x, y, r, a, a + .7); ctx.stroke(); } }
     if (e.boss) { ctx.globalAlpha = .4; const r = e.r * 3; ctx.drawImage(lightSprite(e.col), x - r, y - r, r * 2, r * 2); }
   }
   ctx.globalAlpha = 1;
@@ -1502,7 +1576,7 @@ function drawEnemyBullets(ctx, alpha) {
 }
 function queueLights(alpha) {
   const p = G.player;
-  if (p && !p.dead) light(p.x, p.y, 300, '#ffffff', .85);
+  if (p && !p.dead) light(p.x, p.y, B && B.darkness ? 170 : 300, '#ffffff', .85);
   let n = 0; for (const b of G.bullets) { if (n++ > 70) break; light(b.x, b.y, b.shape === 4 ? 60 : 40, b.shape === 4 ? '#ff8a2b' : bpal()[0], .5); }
   n = 0; for (let i = 0; i < G.ebullets.length; i += 2) { if (n++ > 90) break; const b = G.ebullets[i]; light(b.x, b.y, 38, bpal()[b.shape === 3 ? 3 : 2], .55); }
   for (const e of G.enemies) { if (e.dead) continue; if (e.atkPhase === 1) light(e.x, e.y, 90, e.col, .8); else if (e.elite || e.boss) light(e.x, e.y, e.boss ? 260 : 70, e.col, .6); }
@@ -1830,7 +1904,7 @@ class Bullet {
     this.crit = false; this.pierce = 0; this.bounce = 0; this.bounces = 0; this.homing = 0; this.split = 0; this.splitDepth = 0; this.isFrag = false; this.explode = 0; this.expDmg = 0;
     this.burn = 0; this.chill = 0; this.shock = 0; this.poison = 0; this.kb = 0; this.src = ''; this.ret = 0; this.acc = 0; this.maxSpd = 0; this.drag = 0; this.mine = 0; this.armT = 0;
     this.forked = false; this.dist = 0; this.h0 = this.h1 = this.h2 = this.h3 = 0; this.hn = 0; this.ebounce = 0; this.grazed = false; this.owner = null; this.dead = false;
-    this.w = null; this.lastHit = 0; this.zapT = 0; this.wallPass = -1; this.curve = 0; this.delay = 0; this.wave = 0; this.waveA = 0; this.baseAng = 0; this.big = false; this.phase = false; this.pierced = 0; this.critBonus = 0; this.lightning = 0; this.seek = false; this.missile = false; this.summon = false; this.spd0 = 0;
+    this.pc = 1; this.expChance = 1; this.w = null; this.lastHit = 0; this.zapT = 0; this.wallPass = -1; this.curve = 0; this.delay = 0; this.wave = 0; this.waveA = 0; this.baseAng = 0; this.big = false; this.phase = false; this.pierced = 0; this.critBonus = 0; this.lightning = 0; this.seek = false; this.missile = false; this.summon = false; this.spd0 = 0;
   }
   hitBefore(id) { return this.h0 === id || this.h1 === id || this.h2 === id || this.h3 === id; }
   markHit(id) { switch (this.hn++ & 3) { case 0: this.h0 = id; break; case 1: this.h1 = id; break; case 2: this.h2 = id; break; default: this.h3 = id; } }
@@ -1868,7 +1942,7 @@ function makePlayer(run) {
     x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, r: T.player.r, ang: 0, hp: run.hp, maxHp: run.maxHp, dead: false, deadT: 0,
     dashT: 0, dashCd: 0, dashCharges: 1, dashDx: 0, dashDy: 0, iframe: 0, hitT: 0, ghosts: [], ghostT: 0,
     abilityCd: 0, recX: 0, recY: 0, squash: 0, bob: 0, flash: 0, muzzle: 0, shots: 0, hits: 0, still: 0, moveT: 0,
-    buffs: { dmg: 0, rate: 0, crit: 0, overdrive: 0, aegis: 0, adren: 0 }, cascade: 0, cascadeT: 0, autoCrit: 0, reloadCrits: 0,
+    buffs: { dmg: 0, rate: 0, crit: 0, overdrive: 0, aegis: 0, adren: 0, frac: 0, warp: 0, shat: 0 }, hydra: 0, hydraT: 0, blood: 0, oshield: 0, regenAcc: 0, regenPulse: 0, leechB: 4, cascade: 0, cascadeT: 0, autoCrit: 0, reloadCrits: 0,
     shield: run.char === 'bastion' ? 20 : 0, shieldMax: run.char === 'bastion' ? 20 : 0, shieldT: 0, barrierT: 0, phoenixUsed: false, teslaT: 0, killsForNuke: 0, voltCount: 0, color: ch.col,
   };
 }
@@ -1893,7 +1967,7 @@ function updatePlayer(dt) {
     p.ghostT -= dt; if (p.ghostT <= 0) { p.ghostT = .022; p.ghosts.push({ x: p.x, y: p.y, a: p.ang, t: .22 }); }
     dashTrails(p, dt);
   } else {
-    let spd = TP.speed * ch.spd * max(.3, 1 + B.speed); const w = curWeapon(p);
+    let spd = TP.speed * ch.spd * max(.3, 1 + B.speed + (B.adrenal && p.hp < p.maxHp * .5 ? .25 : 0)); const w = curWeapon(p);
     if (w.def.slow && IN.down.fire && w.spin > .1) spd *= w.def.slow;
     if (w.def.k === 'bow' && w.charge > 0) spd *= .75;
     const tvx = mx * spd, tvy = my * spd, acc = TP.accel * (onIce ? T.haz.ice.friction : 1), fr = TP.friction * (onIce ? T.haz.ice.friction : 1);
@@ -1931,9 +2005,10 @@ function startDash(p, mx, my, dcd) {
   if (B.syn.stormcaller) { let n = 3; forEnemiesNear(p.x, p.y, 260, e => { if (n-- > 0) { beamFx(e.x, e.y - 300, e.x, e.y, '#d8c2ff', 4, .25, 30); hurtEnemy(e, 40, DMG.SHOCK); flashLight(e.x, e.y, 120, '#b98bff', .15); } }); }
   if (B.dashBomb) { const b = newBullet(0); b.x = b.px = p.x; b.y = b.py = p.y; b.life = .6; b.r = 6; b.shape = 6; b.explode = 70 * expRad(); b.expDmg = T.ST.bombDmg * expMul(); b.src = 'bomb'; b.pierce = 99; b.mine = 2; }
   if (B.dashAcid) addZone('acid', p.x, p.y, 40, 3, 0);
+  onDashPower(p);
 }
 function dashTrails(p, dt) {
-  p.trailT = (p.trailT || 0) - dt; if (p.trailT > 0) return; p.trailT = .03;
+  dashSlice(p); p.trailT = (p.trailT || 0) - dt; if (p.trailT > 0) return; p.trailT = .03;
   if (B.dashFire) addZone('fire', p.x, p.y, B.syn.wildfire ? 28 : 18, T.ST.dashFireDur, B.dashFire);
 }
 function playerHazard(p, hz, dt) {
@@ -1945,7 +2020,7 @@ function playerHazard(p, hz, dt) {
 }
 function aimAssist(p, a) {
   let best = null, bs = .18;
-  for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed) continue; const d = hypot(e.x - p.x, e.y - p.y); if (d > 480) continue;
+  for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed || e.untouchable) continue; const d = hypot(e.x - p.x, e.y - p.y); if (d > 480) continue;
     const da = abs(angDiff(a, atan2(e.y - p.y, e.x - p.x))); const s = da + d / 4000; if (da < .2 && s < bs) { bs = s; best = e; } }
   return best ? lerpAng(a, atan2(best.y - p.y, best.x - p.x), .65) : a;
 }
@@ -1954,11 +2029,13 @@ function hurtPlayer(dmg, src, x, y) {
   if (B.barrier && p.barrierT <= 0) { p.barrierT = T.ST.barrierCd; p.hitT = .5; A.play('shieldhit', p.x, p.y); ring(p.x, p.y, 30, ci('#7fdcff'), .4, 4); burst(p.x, p.y, 16, C_ICE, 200, .4, 3); hitstop(.03); return false; }
   const run = G.run; dmg *= (1 + B.dmgTaken) * (run.heat > 4 ? 1.2 : 1) * (run.char === 'bastion' ? .85 : 1) * (G.settings.assist ? .5 : 1);
   if (p.shield > 0) { const a = min(p.shield, dmg); p.shield -= a; dmg -= a; p.shieldT = 3; if (dmg <= 0) { p.hitT = .4; A.play('shieldhit', p.x, p.y, .7); ring(p.x, p.y, 26, ci('#5dff8a'), .3); return true; } }
-  p.hp -= dmg; p.hitT = T.player.hitIframe; p.flash = .12; run.stats.dmgTaken += dmg; run.roomHit = true;
+  dmg = absorbPower(p, dmg); if (dmg <= 0) { p.hitT = .4; A.play('shieldhit', p.x, p.y, .7); ring(p.x, p.y, 26, C_RED, .3); return true; }
+  p.hp -= dmg; p.hitT = T.player.hitIframe * (B.shattered ? .2 : 1); p.flash = .12; run.stats.dmgTaken += dmg; run.roomHit = true; run.roomDmg = (run.roomDmg || 0) + dmg;
   run.recap.push({ src, dmg: round(dmg), t: G.time, hp: max(0, round(p.hp)) }); if (run.recap.length > 8) run.recap.shift();
   DIRECTOR.onPlayerHurt(dmg);
   A.play('hurt', p.x, p.y); trauma(.55); hitstop(.06); aberrate(T.fx.abberation * 1.6); screenFlash(.12);
   burst(p.x, p.y, 18, C_RED, 260, .45, 3); ring(p.x, p.y, 34, C_RED, .3, 3); wtext(p.x, p.y - 14, '-' + round(dmg), '#ff5470', 11, .8, -45);
+  onHurtPower(p);
   if (B.hurtFreeze) { ring(p.x, p.y, 140, C_ICE, .5, 5); forEnemiesNear(p.x, p.y, 140, e => freeze(e, freezeDur())); A.play('shatter', p.x, p.y); }
   if (p.hp <= 0) {
     if (B.phoenix && !p.phoenixUsed) { p.phoenixUsed = true; p.hp = p.maxHp * .4; p.hitT = 2; explode(p.x, p.y, 180, 120, 0, 'Phoenix'); addZone('fire', p.x, p.y, 120, 3, 25);
@@ -1967,8 +2044,10 @@ function hurtPlayer(dmg, src, x, y) {
   }
   return true;
 }
-function healPlayer(v, force = false) {
-  const p = G.player; if (!p || p.dead || (B.noHeal && !force)) return; const h = min(v, p.maxHp - p.hp); if (h <= 0) return;
+function healPlayer(v, force = false, quiet = false) {
+  const p = G.player; if (!p || p.dead || (B.noHeal && (!force || B.bloodmoon))) return; const h = min(v, p.maxHp - p.hp);
+  if (B.overheal && v > h) { p.oshield = min(B.overheal, (p.oshield || 0) + v - max(0, h)); }
+  if (h <= 0) return; if (quiet) { p.hp += h; p.regenPulse = .4; return; }
   p.hp += h; wtext(p.x, p.y - 16, '+' + round(h), '#5dff8a', 10, .8, -40); burst(p.x, p.y, 8, C_HEAL, 120, .5, 2, PK.DOT);
 }
 function playerDie(src) {
@@ -1982,6 +2061,7 @@ function playerDie(src) {
 function hurtEnemy(e, dmg, kind, crit = false, kx = 0, ky = 0) {
   if (e.dead || e.spawnT > 0 || e.inv > 0 || e.burrowed) return 0;
   if (e.frozenT > 0) dmg *= 1 + B.brittle;
+  dmg *= powerDmgMul(e);
   if (e.poison > 0) dmg *= 1 + B.corrode * e.poison;
   if (e.buffT > 0) dmg *= 1 - T.E.warden.buffDef;
   if (kind & DMG.SHOCK && e.poison > 0 && B.syn.electrolysis) dmg *= 1.5;
@@ -1992,7 +2072,7 @@ function hurtEnemy(e, dmg, kind, crit = false, kx = 0, ky = 0) {
   if (kx || ky) { const m = e.boss ? 0 : 1 / (e.mass || 1); e.kbx += kx * m; e.kby += ky * m; }
   if (dmg >= 1 || crit) dmgNumber(e.x, e.y - e.r, dmg, crit, kind & DMG.DOT ? '#bfc8dc' : kind & DMG.SHOCK ? '#d8c2ff' : null);
   if (e.boss) BOSS.onHurt(e, dmg);
-  if (e.hp <= 0) killEnemy(e, kind, crit);
+  if (e.hp <= 0) { const ex = -e.hp; killEnemy(e, kind, crit); if (B.overkill) overkillLeap(e, ex); }
   return dmg;
 }
 function killEnemy(e, kind, crit) {
@@ -2013,8 +2093,8 @@ function killEnemy(e, kind, crit) {
   if (!e.noDrop) {
     const gold = (def.cost || 1) * T.gold.enemy * (e.elite ? T.gold.elite / 1.4 : 1) * (1 + B.gold) * (1 + min(run.combo, 30) * .01);
     dropGold(e.x, e.y, gold);
-    const hpF = p.hp / p.maxHp, ch = .018 + (hpF < .35 ? .03 : 0) + (DIRECTOR.phase === 2 ? .02 : 0);
-    if (!(G.run.heat > 9) && rnd() < ch * (e.elite ? 4 : 1)) dropPickup('heal', e.x, e.y, 8);
+    const hpF = p.hp / p.maxHp, ch = (T.ST.healDrop + (hpF < .35 ? .03 : 0) + (DIRECTOR.phase === 2 ? .02 : 0)) * (1 + B.healDrop);
+    if (!(G.run.heat > 9)) { if (e.elite) dropPickup('heal', e.x, e.y, T.ST.eliteHeal + B.healOrbAdd); else if (rnd() < ch) dropPickup('heal', e.x, e.y, T.ST.healOrb + B.healOrbAdd); }
   }
   DIRECTOR.onKill(e);
   // on-kill effects
@@ -2033,6 +2113,7 @@ function killEnemy(e, kind, crit) {
   if (B.killExplode && rnd() < B.killExplode) explode(e.x, e.y, 60 * expRad(), 50 * expMul(), 0, 'Volatile', true);
   if (B.killSeeker) { const b = fragBullet(e.x, e.y, rnd() * TAU, T.ST.seekerDmg * (1 + B.dmg), 'Seeker'); b.homing = 9; b.life = 1.6; b.seek = true; b.vx *= .7; b.vy *= .7; }
   if (B.ghosts && rnd() < B.ghosts) spawnGhost(e);
+  onKillPower(e);
   if (B.nuke) { p.killsForNuke++; if (p.killsForNuke >= T.ST.nukeKills) { p.killsForNuke = 0; nukeStrike(); } }
   // elite / special deaths
   if (e.mods) {
@@ -2054,11 +2135,15 @@ function addChill(e, v) {
   if (e.dead || e.frozenT > 0) return; e.chill += v;
   if (e.chill >= T.ST.chillMax) { e.chill = 0; if (e.boss) { e.chill = T.ST.chillMax * .5; return; } freeze(e, freezeDur()); }
 }
-function freeze(e, d) { if (e.boss || e.dead) return; e.frozenT = d; e.atkPhase = 0; A.play('shatter', e.x, e.y, .35, 1.6); burst(e.x, e.y, 8, C_ICE, 140, .4, 2.5, PK.SHARD); }
-function addPoison(e, n) { if (e.dead) return; e.poison = min(poisonMax(), e.poison + n); e.poisonT = T.ST.poisonDecay; }
+let _cryoDepth = 0;
+function freeze(e, d) { if (e.boss || e.dead) return; const was = e.frozenT > 0; e.frozenT = d;
+  if (B.cryoBurst && !was && _cryoDepth < 2) { _cryoDepth++; ring(e.x, e.y, 90, C_ICE, .3, 3); forEnemiesNear(e.x, e.y, 90, o => { if (o !== e) addChill(o, 40); }); _cryoDepth--; } e.atkPhase = 0; A.play('shatter', e.x, e.y, .35, 1.6); burst(e.x, e.y, 8, C_ICE, 140, .4, 2.5, PK.SHARD); }
+function addPoison(e, n) { if (e.dead) return; e.poison = min(poisonMax(), e.poison + n); e.poisonT = T.ST.poisonDecay;
+  if (B.venomBurst && e.poison >= poisonMax() && (e.venomT || 0) < G.time) { e.venomT = G.time + 1; e.poison *= .5; burst(e.x, e.y, 16, C_POISON, 260, .5, 3); ring(e.x, e.y, 80, C_POISON, .35, 4); A.play('explodeS', e.x, e.y, .5, 1.4);
+    forEnemiesNear(e.x, e.y, 80, o => { if (o !== e) hurtEnemy(o, B.venomBurst * (1 + B.dmg * .5), DMG.EXPL); }); } }
 function updateStatus(e, dt) {
   if (e.burnT > 0) { e.burnT -= dt; e.burnAcc += e.burnDps * dt; e.fxT -= dt; if (e.fxT <= 0) { e.fxT = .07; emit(PK.DOT, e.x + rr(-e.r, e.r), e.y + rr(-e.r, e.r), rr(-20, 20), -rr(40, 90), .5, 2.2, rnd() < .5 ? C_FIRE : C_FIRE2, 2); } }
-  if (e.poison > 0) { e.poisonAcc += e.poison * poisonDps() * dt; e.poisonT -= dt; if (e.poisonT <= 0) { e.poison--; e.poisonT = T.ST.poisonDecay; } if (rnd() < dt * 6) emit(PK.DOT, e.x + rr(-e.r, e.r), e.y, 0, -30, .6, 2, C_POISON, 1); }
+  if (e.poison > 0) { e.poisonAcc += e.poison * poisonDps() * dt; e.poisonT -= dt; if (e.poisonT <= 0 && !B.plaguebearer) { e.poison = max(0, e.poison - 1); e.poisonT = T.ST.poisonDecay; } if (rnd() < dt * 6) emit(PK.DOT, e.x + rr(-e.r, e.r), e.y, 0, -30, .6, 2, C_POISON, 1); }
   if (e.chill > 0) e.chill = max(0, e.chill - T.ST.chillDecay * dt);
   if (e.frozenT > 0) e.frozenT -= dt;
   if (e.stunT > 0) e.stunT -= dt;
@@ -2073,7 +2158,8 @@ function statusSpread() {
 }
 // apply bullet on-hit effects (elements, splitting, etc.)
 function applyOnHit(e, b) {
-  const p = G.player, run = G.run, sm = b.crit && B.critStatus ? 2 : 1;
+  // proc coefficient: per-hit effects are weighted so fast/multi-hit weapons proc at the same rate per second as slow ones
+  const p = G.player, run = G.run, pc = b.pc, sm = (b.crit && B.critStatus ? 2 : 1) * pc;
   let burn = b.burn + B.burnChance + (B.syn.wildfire && p.moveT > .5 ? .4 : 0); if (b.summon && B.syn.legion) burn = 1;
   if (burn > 0 && (b.summon && !B.droneElem && !B.syn.legion ? false : true) && rnd() < burn * sm) ignite(e, burnDps() * (b.burn >= 1 ? 1 : 1));
   if (b.summon && !B.droneElem) { if (B.syn.hive) addPoison(e, 3); return; }
@@ -2082,10 +2168,10 @@ function applyOnHit(e, b) {
   const pois = B.poison + b.poison + (B.syn.venomrounds && b.pierced > 0 ? 2 : 0) + (B.syn.plague && b.isFrag ? 2 : 0);
   if (pois > 0) addPoison(e, pois * sm);
   let shock = B.shockChance + b.shock; if (B.syn.thunderclap && b.crit) shock = 1;
-  if (run.char === 'volt' && ++p.voltCount >= 5) { p.voltCount = 0; shock = 1; }
+  if (run.char === 'volt' && (p.voltCount += pc) >= 5) { p.voltCount -= 5; shock = 1 / sm; }
   if (shock > 0 && rnd() < shock * sm) chainLightning(e, shockDmg() * (1 + B.dmg * .5), shockJumps(), b.x, b.y);
-  if (B.capacitor && ++p.hits % T.ST.capacitorN === 0) { let n = B.capacitor; forEnemiesNear(e.x, e.y, 220, o => { if (n-- > 0) { beamFx(e.x, e.y, o.x, o.y, '#c39bff', 2.5, .2, 16); hurtEnemy(o, 30, DMG.SHOCK); } }); A.play('zap', e.x, e.y); }
-  if (run.char === 'volt' && shock >= 1) e.stunT = max(e.stunT, .25);
+  if (B.capacitor && (p.capAcc = (p.capAcc || 0) + pc) >= T.ST.capacitorN) { p.capAcc -= T.ST.capacitorN; let n = B.capacitor; forEnemiesNear(e.x, e.y, 220, o => { if (n-- > 0) { beamFx(e.x, e.y, o.x, o.y, '#c39bff', 2.5, .2, 16); hurtEnemy(o, 30, DMG.SHOCK); } }); A.play('zap', e.x, e.y); }
+  if (run.char === 'volt' && shock * sm >= 1) e.stunT = max(e.stunT, .25);
 }
 // chain lightning from a source enemy
 let _chainId = 1;
@@ -2094,7 +2180,7 @@ function chainLightning(first, dmg, jumps, sx, sy) {
   A.play('zap', first.x, first.y, .8);
   while (cur && total < 40) {
     cur.chainId = id; beamFx(x, y, cur.x, cur.y, '#c9a8ff', 2.2, .16, 14); flashLight(cur.x, cur.y, 80, '#b98bff', .12, .8);
-    hurtEnemy(cur, dmg, DMG.SHOCK); if (B.syn.electrolysis) addPoison(cur, 3); if (B.syn.superconductor) addChill(cur, 25);
+    const sc = B.shockCrit && rollCrit(G.player); hurtEnemy(cur, dmg * (sc ? T.ST.critMul + B.critDmg : 1), DMG.SHOCK, sc); if (B.syn.electrolysis) addPoison(cur, 3); if (B.syn.superconductor) addChill(cur, 25);
     if (B.syn.overload) explode(cur.x, cur.y, 34, 20 * expMul(), 0, 'Overload', true);
     if (!(B.syn.superconductor && cur.frozenT > 0)) jumps--;
     if (jumps < 0) break;
@@ -2109,12 +2195,14 @@ function forEnemiesNear(x, y, r, fn) {
   for (let i = 0; i < n; i++) { const e = L[out[i]]; if (e && !e.dead && e.spawnT <= 0 && !e.burrowed && dist2(x, y, e.x, e.y) < r2 + e.r * e.r * 2) fn(e); }
 }
 function nearestEnemy(x, y, r, needLos = false) {
-  let best = null, bd = r * r; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed) continue; const d = dist2(x, y, e.x, e.y); if (d < bd && (!needLos || los(x, y, e.x, e.y))) { bd = d; best = e; } } return best;
+  let best = null, bd = r * r; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed || e.untouchable) continue; const d = dist2(x, y, e.x, e.y); if (d < bd && (!needLos || los(x, y, e.x, e.y))) { bd = d; best = e; } } return best;
 }
 
 // ---- explosions ---------------------------------------------------------------------------------------------
 // team: 0 player (hurts enemies), 1 enemy (hurts player), 2 both
+let _horizonN = 0;
 function explode(x, y, r, dmg, team, src, small = false) {
+  const hz = team === 0 && B && B.horizon; if (hz) { r *= 1.3; if (++_horizonN % 4 === 0 && !small) addZone('hole', x, y, 150, 1.6, 0); }
   const big = r > 70;
   A.play(big ? 'explode' : 'explodeS', x, y, small ? .6 : 1); if (big) A.duck(.45, .5);
   trauma(small ? .12 : big ? .5 : .3); if (big) hitstop(.035); flashLight(x, y, r * 3.2, '#ff9a4a', .22, 1.2); if (big) aberrate(T.fx.abberation);
@@ -2122,7 +2210,7 @@ function explode(x, y, r, dmg, team, src, small = false) {
   ring(x, y, r, C_FIRE2, .3, 5); emit(PK.GLOW, x, y, 0, 0, .2, r * 1.15, C_FIRE2, 0); decal('scorch', x, y, r * .9, null, .7);
   if (team !== 1) {
     forEnemiesNear(x, y, r, e => { const d = hypot(e.x - x, e.y - y), f = 1 - .5 * sat(d / r), a = atan2(e.y - y, e.x - x);
-      hurtEnemy(e, dmg * f, DMG.EXPL, false, cos(a) * 300, sin(a) * 300); if (B.expStun && team === 0) e.stunT = max(e.stunT, B.expStun); if (B.syn.avalanche) addChill(e, 60); });
+      hurtEnemy(e, dmg * f, DMG.EXPL, false, cos(a) * (hz ? -260 : 300), sin(a) * (hz ? -260 : 300)); if (B.expStun && team === 0) e.stunT = max(e.stunT, B.expStun); if (B.syn.avalanche) addChill(e, 60); });
     if (team === 0) {
       if (B.syn.napalm) addZone('fire', x, y, r * .7, 3, 18);
       if (B.syn.cluster && !small) for (let i = 0; i < 3; i++) { const b = fragBullet(x, y, rnd() * TAU, 0, 'Bomblet'); b.explode = 30; b.expDmg = 15 * expMul(); b.life = .25 + rnd() * .2; b.shape = 6; b.isFrag = true; b.split = 0; }
@@ -2144,13 +2232,13 @@ function nukeStrike() {
 // ---- fragments (split bullets) -------------------------------------------------------------------------------
 function fragBullet(x, y, ang, dmg, src) {
   const b = newBullet(0), s = 520 * (1 + B.pspd); b.x = b.px = x; b.y = b.py = y; b.vx = cos(ang) * s; b.vy = sin(ang) * s; b.r = 2.2; b.dmg = dmg; b.life = .35 * (1 + B.range); b.isFrag = true;
-  b.shape = 1; b.src = src; b.col = 0; return b;
+  b.shape = 1; b.src = src; b.col = 0; b.pc = .3; b.expChance = .3; return b;
 }
 function splitBullet(b, n, spreadAng) {
   if (b.isFrag && b.splitDepth <= 0) return;
   const a0 = atan2(b.vy, b.vx);
   for (let i = 0; i < n; i++) {
-    const a = spreadAng ? a0 + (i - (n - 1) / 2) * spreadAng : a0 + (rnd() - .5) * 2.2, f = fragBullet(b.x, b.y, a, b.dmg * .35, b.src);
+    const a = spreadAng ? a0 + (i - (n - 1) / 2) * spreadAng : a0 + (rnd() - .5) * 2.2, f = fragBullet(b.x, b.y, a, b.dmg * (.35 + B.fragDmg), b.src);
     f.burn = b.burn; f.col = b.col; f.splitDepth = b.isFrag ? b.splitDepth - 1 : B.splitDepth; f.isFrag = true; f.h0 = b.lastHit || 0; f.hn = 1;
     if (f.splitDepth > 0) f.split = B.split;
   }
@@ -2182,10 +2270,10 @@ function updatePlayerBullets(dt) {
       if (t === 2) damageCover(ty * room.w + tx, b.dmg);
       spray(b.x, b.y, atan2(-b.vy, -b.vx), 1.6, 4, b.crit ? C_GOLD : ci(bpal()[0]), 160, .18, 2);
       const totalB = b.bounce + B.bounce + (B.syn.pinballwiz ? 1 : 0) + (B.syn.kinetic ? 1 : 0);
-      if (B.splitWall && !b.isFrag) splitBullet(b, B.splitWall, .5);
+      if (B.splitWall && !b.isFrag && rnd() < b.pc) splitBullet(b, B.splitWall, .5);
       if (b.bounces < totalB && !b.ret) {
         const hx = tileSolidB(floor(nx / TS), floor(b.y / TS)), hy = tileSolidB(floor(b.x / TS), floor(ny / TS));
-        if (hx || (!hx && !hy)) b.vx = -b.vx; if (hy || (!hx && !hy)) b.vy = -b.vy; b.bounces++;
+        if (hx || (!hx && !hy)) b.vx = -b.vx; if (hy || (!hx && !hy)) b.vy = -b.vy; b.bounces++; b.pierce += B.bouncePierce;
         b.dmg *= 1 + B.bounceDmg + (B.syn.kinetic ? .25 : 0); if (B.syn.kinetic) { b.vx *= 1.25; b.vy *= 1.25; }
         if (B.bounceSeek || B.syn.pinballwiz) { const e = nearestEnemy(b.x, b.y, 500, true); if (e) { const s = hypot(b.vx, b.vy), a = atan2(e.y - b.y, e.x - b.x); b.vx = cos(a) * s; b.vy = sin(a) * s; } }
         if (B.bounceNova) { ring(b.x, b.y, 45, C_GOLD, .25, 2); forEnemiesNear(b.x, b.y, 45, e => hurtEnemy(e, B.bounceNova * (1 + B.dmg), DMG.EXPL)); }
@@ -2193,7 +2281,8 @@ function updatePlayerBullets(dt) {
         A.play('block', b.x, b.y, .25, 1.5); b.life = max(b.life, .25);
         continue;
       }
-      if (b.explode) explode(b.x, b.y, b.explode, b.expDmg, 0, b.src, b.isFrag);
+      if (b.explode && rnd() < b.expChance) explode(b.x, b.y, b.explode, b.expDmg, 0, b.src, b.isFrag);
+      if (B.mirrorCurse && !b.isFrag && !b.summon && rnd() < .25 * b.pc) { const a = atan2(p.y - b.y, p.x - b.x) + rr(-.25, .25); eShot(b.x, b.y, a, 230, 9, 4.5, 'Mirror Curse', 3); }
       if (b.ret) { b.age = b.ret + .01; b.vx *= -.5; b.vy *= -.5; continue; }
       freeBullet(list, i); continue;
     }
@@ -2229,12 +2318,13 @@ function bulletHitsEnemy(b, e) {
   if (e.frozenT > 0 && B.syn.glacier && b.pierced > 0) dmg *= 2;
   const a = atan2(b.vy, b.vx), kb = b.kb * (1 + B.kb) * (run.char === 'bastion' ? 1.4 : 1);
   hurtEnemy(e, dmg, b.summon ? DMG.SUMMON | DMG.BULLET : DMG.BULLET, crit, cos(a) * kb, sin(a) * kb);
+  onHitPower(e, b, dmg, crit);
   if (!b.summon) { if (crit) { A.play('crit', e.x, e.y, .8); hitstop(.022); spray(b.x, b.y, a, 1, 8, C_GOLD, 300, .25, 3); } else A.play('hit', e.x, e.y, .5); }
   spray(b.x, b.y, a + PI, 1.8, crit ? 6 : 3, ci(e.col), 200, .2, 2.5);
   applyOnHit(e, b);
-  if (B.syn.detonator && crit) explode(b.x, b.y, 45 * expRad(), b.dmg * .5 * expMul(), 0, 'Detonator', true);
-  if (B.split && !b.isFrag || (b.isFrag && b.splitDepth > 0)) splitBullet(b, B.split || 1, 0);
-  if (b.explode) { explode(b.x, b.y, b.explode * (b.homing && B.syn.smartbombs ? 1.5 : 1), b.expDmg, 0, b.src, b.isFrag); if (b.pierce <= 0) return true; }
+  if (B.syn.detonator && crit && rnd() < b.pc) explode(b.x, b.y, 45 * expRad(), b.dmg * .5 * expMul(), 0, 'Detonator', true);
+  if ((B.split && !b.isFrag && rnd() < b.pc) || (b.isFrag && b.splitDepth > 0)) splitBullet(b, B.split || 1, 0);
+  if (b.explode && rnd() < b.expChance) { explode(b.x, b.y, b.explode * (b.homing && B.syn.smartbombs ? 1.5 : 1), b.expDmg, 0, b.src, b.isFrag); if (b.pierce <= 0) return true; }
   if (b.ebounce < B.enemyBounce && !b.summon) { b.ebounce++; const t = nearestOther(b, e, 300); if (t) { const s = hypot(b.vx, b.vy), na = atan2(t.y - b.y, t.x - b.x); b.vx = cos(na) * s; b.vy = sin(na) * s; return false; } }
   if (b.pierce > 0) {
     b.pierce--; b.pierced++; b.dmg *= 1 + B.pierceDmg; if (B.syn.drill) b.critBonus += .25;
@@ -2293,6 +2383,7 @@ function graze(p, b) {
   const w = curWeapon(p); if (w.def.mag < 99) w.ammo = min(w.mag, w.ammo + ceil(w.mag * (run.char === 'kestrel' ? 1 : T.player.grazeAmmo))); if (w.reloadT > 0 && run.char === 'kestrel') w.reloadT = 0;
   p.abilityCd = max(0, p.abilityCd - T.CH[run.char].cd * T.player.grazeCharge);
   if (run.char === 'kestrel') p.buffs.dmg = 2.5;
+  if (B.shattered) { healPlayer(4, false); p.buffs.shat = 3; }
   if (B.adrenaline) { p.dashCharges = min(p.dashCharges + 1, 1 + (B.dashCharges | 0) + (run.char === 'wraith' ? 1 : 0)); p.buffs.adren = 3; }
 }
 
@@ -2311,7 +2402,7 @@ function updatePickups(dt) {
     k.x += k.vx * dt; k.y += k.vy * dt; collideTiles(k, 4);
     if (!p.dead && d < p.r + 8 && k.t > .2) {
       G.pickups.splice(i, 1);
-      if (k.kind === 'gold') { G.run.gold += k.v; G.run.stats.gold += k.v; A.play('coin', k.x, k.y, .5, 1 + min(.5, G.run.comboPitch = ((G.run.comboPitch || 0) + .02) % .5)); if (G.run.gold >= 400) unlockAch('rich'); }
+      if (k.kind === 'gold') { G.run.gold += k.v; G.run.stats.gold += k.v; if (B.goldHeal && (p.gAcc = (p.gAcc || 0) + k.v) >= 10) { p.gAcc -= 10; healPlayer(B.goldHeal, false, true); } A.play('coin', k.x, k.y, .5, 1 + min(.5, G.run.comboPitch = ((G.run.comboPitch || 0) + .02) % .5)); if (G.run.gold >= 400) unlockAch('rich'); }
       else if (k.kind === 'heal') { if (!(G.run.heat > 9)) { healPlayer(k.v); A.play('heal', k.x, k.y); } }
     }
   }
@@ -2353,6 +2444,7 @@ function updateZones(dt) {
       if (z.kind === 'fire') forEnemiesNear(z.x, z.y, z.r, e => { hurtEnemy(e, z.dps * .25, DMG.DOT); ignite(e, burnDps()); });
       else if (z.kind === 'acid' || z.kind === 'toxic') forEnemiesNear(z.x, z.y, z.r, e => addPoison(e, z.kind === 'acid' ? 1 : 1));
       else if (z.kind === 'tesla') { let n = 0; forEnemiesNear(z.x, z.y, z.r, e => { if (n++ < 8 && rnd() < .75) { beamFx(z.x + rr(-20, 20), z.y + rr(-20, 20), e.x, e.y, '#c9a8ff', 2, .12, 12); hurtEnemy(e, T.ab.tesla.dmg * .75 * (1 + B.dmg), DMG.SHOCK); e.stunT = max(e.stunT, .15); } }); if (n) A.play('zap', z.x, z.y, .5); }
+      else if (z.kind === 'sun') forEnemiesNear(z.x, z.y, z.r, e => { if (!e.boss) { const a = atan2(z.y - e.y, z.x - e.x); e.kbx += cos(a) * 90; e.kby += sin(a) * 90; } hurtEnemy(e, z.dps * .25 * (1 + B.dmg * .5), DMG.DOT); ignite(e, burnDps()); });
       else if (z.kind === 'hole') forEnemiesNear(z.x, z.y, z.r, e => { if (e.boss) return; const a = atan2(z.y - e.y, z.x - e.x); e.kbx += cos(a) * 140; e.kby += sin(a) * 140; hurtEnemy(e, 4, DMG.DOT); });
     } else if (!p.dead && dist2(z.x, z.y, p.x, p.y) < z.r * z.r) {
       if (z.kind === 'efire') hurtPlayer(z.dps, 'Fire'); else if (z.kind === 'eacid') hurtPlayer(z.dps, 'Acid'); else if (z.kind === 'eice') { p.vx *= .6; p.vy *= .6; }
@@ -2369,7 +2461,7 @@ function simTick(dt) {
   G.time += dt; G.tick++; const run = G.run, p = G.player;
   if (G.cam.focusT > 0) G.cam.focusT -= dt / max(.2, G.timeScale);
   run.stats.time += dt; if (run.comboT > 0 && (run.comboT -= dt) <= 0) run.combo = 0;
-  G.enemyTS = p.buffs && p.buffs.warp > 0 ? T.ACT.warp.scale : 1;
+  G.enemyTS = p.buffs.frac > 0 ? .03 : p.buffs.warp > 0 ? T.ACT.warp.scale : 1;
   if (p.buffs.warp > 0) p.buffs.warp -= dt;
   // intensity zoom: punch in slightly during peaks, bosses and kill streaks
   G.cam.zt = 1 + (G.boss ? .04 : 0) + (DIRECTOR.active && DIRECTOR.phase === 1 ? T.view.zoomIntense : 0) + min(.04, run.combo * .002) + (G.cam.focusT > 0 ? .08 : 0);
@@ -2388,7 +2480,7 @@ function simTick(dt) {
   ROOMS.update(dt);
   // sweep dead enemies
   const E = G.enemies; for (let i = E.length - 1; i >= 0; i--) if (E[i].dead) { EPOOL.push(E[i]); E[i] = E[E.length - 1]; E.pop(); }
-  G.alive = E.length;
+  let al = 0; for (const e of E) if (!e.untouchable) al++; G.alive = al;
   A.heartbeat(dt, p.dead ? 1 : p.hp / p.maxHp);
 }
 function hazardsOnEnemies(dt) {
@@ -2418,13 +2510,14 @@ class Enemy {
     this.tx = 0; this.ty = 0; this.hasT = false; this.path = null; this.pathI = 0; this.pathReq = false; this.pathT = 0; this.strafe = rnd() < .5 ? 1 : -1; this.waitT = 0; this.kids = 0; this.parent = null;
     this.burrowed = false; this.size = 0; this.buffT = 0; this.shieldFlash = 0; this.noDrop = false; this.a = 0; this.b = 0; this.c = 0; this.d = 0; this.ax = 0; this.ay = 0; this.phase = 0; this.lastHitT = -9;
     this.envT = 0; this.healT = 0; this.healTarget = null; this.lungeT = 0; this.ally = null; this.contact = 0; this.lastLosT = 0; this.seenT = 0; this.lx = 0; this.ly = 0;
-    this.hasted = false; this.vamp = false; this.tl = null; this.sight = 0; this.alpha = 1; this.peek = 0; this.atkKind = ''; this.atkDur = 1; this.lockAng = false; this.onWall = null; this.dmgMul = 1; this.col = '#ffffff'; this.orbT = 0; this.bossId = ''; this.introT = 0; this.transT = 0; this.gen = null; this.waitT = 0; this.hold = 0; this.lift = 0; this.spin = 0; this.orbs = null; this.wind = 0; this.flood = null; this.floodQ = 0; this.shrink = 0; this.shrinkR = 0; this.lastAtk = ''; this.bdmg = 10;
+    this.untouchable = false; this.sliceId = 0; this.venomT = 0; this.c2 = 0; this.hasted = false; this.vamp = false; this.tl = null; this.sight = 0; this.alpha = 1; this.peek = 0; this.atkKind = ''; this.atkDur = 1; this.lockAng = false; this.onWall = null; this.dmgMul = 1; this.col = '#ffffff'; this.orbT = 0; this.bossId = ''; this.introT = 0; this.transT = 0; this.gen = null; this.waitT = 0; this.hold = 0; this.lift = 0; this.spin = 0; this.orbs = null; this.wind = 0; this.flood = null; this.floodQ = 0; this.shrink = 0; this.shrinkR = 0; this.lastAtk = ''; this.bdmg = 10;
   }
 }
 const EPOOL = []; for (let i = 0; i < 400; i++) EPOOL.push(new Enemy());
 const ROLE = { NONE: 0, PIN: 1, FLANK_L: 2, FLANK_R: 3, GUARD: 4, SNIPE: 5 }, ROLE_NAME = ['', 'PIN', 'FLANK L', 'FLANK R', 'GUARD', 'SNIPE'];
 function enemyScale() { const run = G.run, b = run ? run.biome : 0, l = run && run.map.cur ? run.map.byId[run.map.cur].layer : 0;
-  return { hp: [1, 1.45, 2, 2.7][b] * (1 + l * .05) * (1 + (run && run.heat > 0 ? .15 : 0)) * (1 + (B ? B.enemyHp : 0)), dmg: [1, 1.15, 1.3, 1.45][b] }; }
+  const S = T.scale, perf = run ? run.perf || 1 : 1;
+  return { hp: S.hp[b] * (1 + l * S.layerHp) * pow(perf, S.perfHp) * (1 + (run && run.heat > 0 ? .15 : 0)) * (1 + (B ? B.enemyHp : 0)), dmg: S.dmg[b] }; }
 function spawnEnemy(type, x, y, o = {}) {
   const def = T.E[type], e = EPOOL.pop() || new Enemy(), sc = enemyScale(); e.reset();
   e.id = _eid++; e.type = type; e.def = def; e.brain = BRAINS[def.b]; e.x = e.px = x; e.y = e.py = y; e.r = def.r; e.fly = !!def.fly;
@@ -2752,6 +2845,8 @@ const BRAINS = {
     active: (e, dt) => { e.c -= dt; strafeAround(e, e.def.range, eSpeed(e) * .5); if (e.c <= 0 && e.b < 2) { e.c = .14; e.b++; const a = leadAim(e, e.x, e.y, e.def.bspd); eShot(e.x, e.y, a, e.def.bspd, eDmg(e, e.def.dmg), 4, 'Wisp', 0, e); A.play('eshot', e.x, e.y, .3, 1.4); } },
     recover: .2,
   },
+  // STALKER (Hunted pact): relentless, unkillable, slow; its touch hurts
+  stalker: { acts: { stalk: { score: () => 1, run: e => { flowTo(e, eSpeed(e) * (e.dist > 500 ? 1.8 : 1)); if (e.dist < e.r + 14 && (e.c || 0) < G.time) { e.c = G.time + 1.2; e.contact = e.def.dmg * e.dmgMul; } } } }, fire() { } },
   // JUGGERNAUT: armoured advance, ground slam with shockwave ring
   brute: {
     acts: { push: { score: e => .5, run: e => { flowTo(e, eSpeed(e)); if (e.dist < 115 && canShoot(e) && tokenOk(e, 'melee')) { startAttack(e, e.def.wind, 'slam', 'growl', .7); e.tl = tele('circle', e.x, e.y, e.def.slamR, 0, e.def.wind, '#ff3b3b', 0, e); } } } },
@@ -2824,7 +2919,7 @@ const DIRECTOR = {
   stress: 0, phase: 0, phaseT: 0, budget: 0, spent: 0, waveT: 0, active: false, kills: 0, killRate: 0, history: new Float32Array(240), hi: 0, histT: 0,
   start(room) {
     const run = G.run, node = room.node, D = T.director;
-    let budget = (D.budget + node.layer * D.perLayer) * pow(D.biomeMul, run.biome) * (room.type === 'elite' ? D.eliteMul : 1) * (run.heat > 5 ? 1.25 : 1) * clamp(run.perf, .85, 1.2);
+    let budget = (D.budget + node.layer * D.perLayer) * pow(D.biomeMul, run.biome) * (room.type === 'elite' ? D.eliteMul : 1) * (run.heat > 5 ? 1.25 : 1) * pow(run.perf, T.scale.perfBudget);
     if (room.type === 'challenge') budget = 1e9;
     this.budget = budget; this.spent = 0; this.stress = 0; this.phase = 0; this.phaseT = 0; this.waveT = .6; this.active = true; this.kills = 0; this.killRate = 0;
     this.elites = room.type === 'elite' ? 2 + (run.biome >= 2 ? 1 : 0) : 0; this.challengeT = room.type === 'challenge' ? D.challengeTime : 0;
@@ -2873,8 +2968,8 @@ const DIRECTOR = {
       const type = rng.weighted(pool), def = T.E[type]; if (type === 'spire' && G.enemies.some(e => e.type === 'spire' && !e.dead)) continue;
       const pts = cand.filter(s => dist2(s.x, s.y, anchor.x, anchor.y) < 180 * 180), sp = pts.length ? rng.pick(pts) : rng.pick(cand);
       if (rng.chance(.25)) anchor = rng.pick(cand);
-      let elite = null; const ech = T.elite.chance * (1 + run.biome * .4) * (run.heat > 1 ? 2 : 1);
-      if ((this.elites > 0 && n === 0) || (def.cost >= 3 && rng.chance(ech))) { if (this.elites > 0) this.elites--; elite = [rng.pick(T.elite.mods)]; if (run.biome >= 2 && rng.chance(.35)) { const m2 = rng.pick(T.elite.mods); if (!elite.includes(m2)) elite.push(m2); } }
+      let elite = null; const ech = B.thorns ? .3 : T.elite.chance * (1 + run.biome * .4) * (run.heat > 1 ? 2 : 1);
+      if ((this.elites > 0 && n === 0) || ((def.cost >= 3 || B.thorns) && rng.chance(ech))) { if (this.elites > 0) this.elites--; elite = [rng.pick(T.elite.mods)]; if (run.biome >= 2 && rng.chance(.35)) { const m2 = rng.pick(T.elite.mods); if (!elite.includes(m2)) elite.push(m2); } }
       if (type === 'mite') { for (let i = 0; i < 3; i++) spawnEnemy('mite', sp.x + rr(-20, 20), sp.y + rr(-20, 20), { elite: i === 0 ? elite : null }); }
       else spawnEnemy(type, sp.x, sp.y, { elite });
       const c = def.cost * (type === 'mite' ? 3 : 1) * (elite ? 2.2 : 1); spent += c; this.spent += c; n++;
@@ -3067,12 +3162,16 @@ const SHAPE = { bolt: 0, pellet: 1, rocket: 2, disc: 3, flame: 4, arrow: 5, mine
 const ELEM_IDX = () => B.burnChance >= .5 ? 2 : B.chill >= 25 ? 3 : B.shockChance >= .3 ? 4 : B.poison >= 2 ? 5 : 0;
 function makeWeapon(id) { const def = T.W[id]; return { id, def, ammo: def.mag, mag: def.mag, reloadT: 0, cd: 0, spin: 0, heat: 0, charge: 0, full: false, beam: null, tick: 0, ramp: 0 }; }
 const curWeapon = p => G.run.weapons[G.run.wi];
+// proc coefficient per projectile/hit, normalised so every weapon procs ≈6 "standard shots" per second (sidearm = 1)
+const wPc = d => d.pc || clamp(6 / (d.rate * (d.cnt || 1)), .15, 1.5);
+const shotPc = d => d.pc ? d.pc * (d.cnt || 1) : 6 / d.rate;
 function refreshWeapons() { for (const w of G.run.weapons) { const m = w.def.k === 'orbit' ? w.def.mag : max(1, round(w.def.mag * (1 + B.mag))); if (m !== w.mag) { w.ammo = min(m, w.ammo + max(0, m - w.mag)); w.mag = m; } } }
 function swapWeapon(p) { const run = G.run; A.loop('beam', false); A.loop('flame', false); A.loop('spin', false); A.loop('draw', false); run.wi = (run.wi + 1) % run.weapons.length; const w = curWeapon(p); w.cd = max(w.cd, T.player.swapTime); A.play('reload', p.x, p.y, .6, 1.3); wtext(p.x, p.y - 22, w.def.n, '#7ff6ff', 9, .8, -30); }
 function dmgMul(p) {
-  let m = (1 + B.dmg) * (1 + B.momentum * p.moveT); if (B.berserk) m *= 1 + (1 - p.hp / p.maxHp); if (p.buffs.dmg > 0) m *= 1.3; return m;
+  let m = (1 + B.dmg) * (1 + B.momentum * p.moveT) * G.cloneMul; if (B.berserk) m *= 1 + (1 - p.hp / p.maxHp); if (p.buffs.dmg > 0) m *= 1.3; if (p.buffs.shat > 0) m *= 1.4;
+  if (B.midas && G.run) m *= 1 + min(.8, G.run.gold / 1000); return m;
 }
-function rateMul(p) { return max(.2, 1 + B.rate + p.cascade * .12 + (p.buffs.adren > 0 ? .3 : 0) + (p.buffs.overdrive > 0 ? .6 : 0)); }
+function rateMul(p) { return max(.2, 1 + B.rate + (B.adrenal && p.hp < p.maxHp * .5 ? .25 : 0) + p.cascade * .12 + (p.buffs.adren > 0 ? .3 : 0) + (p.buffs.overdrive > 0 ? .6 : 0)); }
 function rollCrit(p) {
   if (p.autoCrit > 0) { p.autoCrit--; return true; } if (p.reloadCrits > 0) { p.reloadCrits--; return true; }
   return rnd() < T.ST.critBase + B.crit + (G.run.char === 'wraith' ? .15 : 0);
@@ -3080,9 +3179,10 @@ function rollCrit(p) {
 function startReload(w, p) { if (w.reloadT > 0 || w.ammo >= w.mag || w.def.k === 'orbit' || w.def.k === 'bow') return; w.reloadT = w.def.rel; A.play('reload', p.x, p.y, .7); if (B.reloadHurt) { p.hp = max(1, p.hp - B.reloadHurt); wtext(p.x, p.y - 16, '-' + B.reloadHurt, '#ff5470', 8); } }
 const _tmpB = new Bullet();
 function updateWeapons(p, dt) {
-  const w = curWeapon(p), d = w.def, run = G.run, held = (IN.down.fire || (G.bot && BOT.fire)) && !p.dead && G.cam.focusT <= 0;
+  const w = curWeapon(p), d = w.def, run = G.run; let held = (IN.down.fire || (G.bot && BOT.fire) || (B.frenzy && !G.room.cleared)) && !p.dead && G.cam.focusT <= 0;
+  if (B.frenzy && d.k === 'bow' && w.charge >= 1) held = false;
   w.cd -= dt;
-  if (w.reloadT > 0) { w.reloadT -= dt * (1 + B.reload); if (w.reloadT <= 0) { w.reloadT = 0; w.ammo = w.mag; A.play('reloaded', p.x, p.y, .7); if (B.reloadCrit) p.reloadCrits = B.reloadCrit; } }
+  if (w.reloadT > 0) { w.reloadT -= dt * (1 + B.reload); if (w.reloadT <= 0) { w.reloadT = 0; w.ammo = w.mag; A.play('reloaded', p.x, p.y, .7); if (B.reloadCrit) p.reloadCrits = B.reloadCrit; onReloadPower(p, w); } }
   if (IN.take('reload')) startReload(w, p);
   const od = p.buffs.overdrive > 0;
   // loops reset
@@ -3109,6 +3209,7 @@ function updateWeapons(p, dt) {
     if (w.ammo <= 0) { if (d.k === 'orbit') { w.cd = .2; } else { startReload(w, p); if (w.reloadT <= 0) A.play('empty', p.x, p.y); w.cd = .25; } if (w.reloadT <= 0 && (p.emptyT || 0) < G.time) { p.emptyT = G.time + 1; wtext(p.x, p.y - 20, 'EMPTY', '#ff8a2b', 9, .6); } }
     else {
       if (d.k === 'rail') fireRail(p, w); else if (d.k === 'arc') fireArc(p, w); else if (d.k === 'orbit') fireBlade(p, w); else fireGun(p, w);
+      if (B.clone) cloneFire(p, w);
       if (!od || d.k === 'orbit') w.ammo--;
       w.cd = max(w.cd + 1 / rate, -dt);
       if (w.ammo <= 0 && d.k !== 'orbit') startReload(w, p);
@@ -3120,6 +3221,8 @@ function updateWeapons(p, dt) {
 }
 function muzzle(p, d, k = 1) {
   const a = p.ang, mx = p.x + cos(a) * 16, my = p.y + sin(a) * 16;
+  if (G.cloning) { spray(mx, my, a, .6, 2, ci('#b05cff'), 260, .08, 2.5); return [mx, my]; }
+  if (B.recoilCurse) { const im = 150 * shotPc(d) * k; p.vx -= cos(a) * im; p.vy -= sin(a) * im; }
   p.recX -= cos(a) * d.rec * k; p.recY -= sin(a) * d.rec * k; p.muzzle = .05; p.squash = max(p.squash, .1 * k);
   trauma(d.shk * k * .6); G.cam.x -= cos(a) * d.rec * .3; G.cam.y -= sin(a) * d.rec * .3;
   flashLight(mx, my, 90 + d.rec * 8, '#ffe8a0', .06, .9);
@@ -3136,10 +3239,10 @@ function bulletFrom(p, w, ang, spdK = 1) {
   b.crit = rollCrit(p); b.dmg = d.dmg * dmgMul(p); b.pierce = (d.pierce || 0) + B.pierce; b.homing = B.homing + (b.crit && B.syn.bloodhound ? 6 : 0); if (b.crit && B.syn.bloodhound) b.pierce++;
   if (d.exp) { b.explode = d.exp * expRad(); b.expDmg = d.expD * dmgMul(p) * expMul(); } else if (B.explode) { b.explode = T.ST.explodeR * expRad(); b.expDmg = b.dmg * T.ST.explodeDmg * expMul(); }
   b.burn = d.burn || 0; b.kb = d.kb; b.src = d.n; b.shape = SHAPE[d.sh] || 0; b.col = b.crit ? 1 : ELEM_IDX(); b.drag = d.drag || 0; b.acc = d.acc || 0; b.maxSpd = d.maxSpd || 0; b.ret = d.ret || 0; b.mine = d.mine ? 1 : 0;
-  b.split = B.split; b.splitDepth = B.splitDepth; return b;
+  b.split = B.split; b.splitDepth = B.splitDepth; b.pc = wPc(d); b.expChance = d.exp ? 1 : b.pc; return b;
 }
 function fireGun(p, w) {
-  const d = w.def, n = d.cnt + B.extraProj, spr = d.spr * max(.15, 1 - B.spread);
+  const d = w.def, n = d.cnt + B.extraProj + (p.hydra || 0), spr = d.spr * max(.15, 1 - B.spread);
   for (let i = 0; i < n; i++) {
     let a = p.ang + (rnd() - .5) * spr;
     if (d.cnt === 1 && n > 1) a = p.ang + (i - (n - 1) / 2) * .12 + (rnd() - .5) * spr;
@@ -3149,13 +3252,13 @@ function fireGun(p, w) {
   muzzle(p, d);
 }
 function afterShot(p, w) {
-  p.shots++; const run = G.run;
-  if (B.missile) { const every = max(3, 9 - B.missile * 2); if (p.shots % every === 0) fireMissiles(p, 1 + B.missileCount); }
-  if (B.ballLight && p.shots % 8 === 0) { const b = newBullet(0); b.x = b.px = p.x; b.y = b.py = p.y; b.vx = cos(p.ang) * 150; b.vy = sin(p.ang) * 150; b.life = 2.6; b.r = 7; b.dmg = 15 * dmgMul(p); b.pierce = 99; b.lightning = 1; b.shape = SHAPE.orb; b.col = 4; b.src = 'Ball Lightning'; A.play('zap', p.x, p.y, .5, .7); }
+  p.shots++; const run = G.run, k = shotPc(w.def);
+  if (B.missile) { const every = T.ST.missileEvery / (1 + (B.missile - 1) * .35); if ((p.missAcc = (p.missAcc || 0) + k) >= every) { p.missAcc -= every; fireMissiles(p, 1 + B.missileCount); } }
+  if (B.ballLight && (p.ballAcc = (p.ballAcc || 0) + k) >= 8) { p.ballAcc -= 8; const b = newBullet(0); b.x = b.px = p.x; b.y = b.py = p.y; b.vx = cos(p.ang) * 150; b.vy = sin(p.ang) * 150; b.life = 2.6; b.r = 7; b.dmg = 15 * dmgMul(p); b.pierce = 99; b.lightning = 1; b.shape = SHAPE.orb; b.col = 4; b.src = 'Ball Lightning'; A.play('zap', p.x, p.y, .5, .7); }
 }
 function fireMissiles(p, n) {
   for (let i = 0; i < n; i++) { const b = newBullet(0), a = p.ang + (i - (n - 1) / 2) * .5 + PI * (n > 1 ? 0 : 0) + rr(-.2, .2), s = 260; b.x = b.px = p.x; b.y = b.py = p.y; b.vx = cos(a) * s; b.vy = sin(a) * s; b.life = 2; b.r = 4;
-    b.dmg = 12 * dmgMul(p); b.homing = 7; b.acc = 900; b.maxSpd = 700; b.explode = 50 * expRad() * (B.syn.smartbombs ? 1.2 : 1); b.expDmg = T.ST.missileDmg * dmgMul(p) * expMul() * (B.syn.smartbombs ? 2 : 1); b.shape = SHAPE.rocket; b.src = 'Missile'; b.missile = true; b.seek = true; }
+    b.dmg = 12 * dmgMul(p); b.homing = 7; b.acc = 900; b.maxSpd = 700; b.explode = 50 * expRad() * (B.syn.smartbombs ? 1.2 : 1); b.expDmg = T.ST.missileDmg * dmgMul(p) * expMul() * (B.syn.smartbombs ? 2 : 1); b.shape = SHAPE.rocket; b.src = 'Missile'; b.missile = true; b.seek = true; b.pc = .5; }
   A.play('rocket', p.x, p.y, .4, 1.3);
 }
 function fireRail(p, w) {
@@ -3163,7 +3266,7 @@ function fireRail(p, w) {
   const hits = []; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed) continue; const rx = e.x - sx, ry = e.y - sy, al = rx * cx + ry * cy; if (al < 0 || al > wall + e.r) continue; if (abs(rx * cy - ry * cx) < e.r + 5 * (1 + B.size)) hits.push([al, e]); }
   hits.sort((x, y) => x[0] - y[0]);
   const crit = rollCrit(p); let dmg = d.dmg * dmgMul(p) * (crit ? T.ST.critMul + B.critDmg : 1);
-  _tmpB.reset(); _tmpB.crit = crit; _tmpB.x = sx; _tmpB.y = sy; _tmpB.src = 'Railgun';
+  _tmpB.reset(); _tmpB.crit = crit; _tmpB.x = sx; _tmpB.y = sy; _tmpB.src = 'Railgun'; _tmpB.pc = wPc(d);
   for (const [al, e] of hits) { const ex = sx + cx * al, ey = sy + cy * al; _tmpB.x = ex; _tmpB.y = ey; hurtEnemy(e, dmg, DMG.BULLET, crit, cx * d.kb, cy * d.kb); applyOnHit(e, _tmpB); spray(ex, ey, a, .8, 8, ci(e.col), 400, .3, 3); _tmpB.pierced++; dmg *= 1 + B.pierceDmg;
     if (B.syn.detonator && crit) explode(ex, ey, 45, dmg * .5, 0, 'Detonator', true); if (B.explode) explode(ex, ey, T.ST.explodeR * expRad(), dmg * T.ST.explodeDmg * expMul(), 0, 'Rail', true); }
   const ex = sx + cx * wall, ey = sy + cy * wall; if (_rayTile >= 0 && G.room.tiles[_rayTile] === 2) damageCover(_rayTile, dmg);
@@ -3178,7 +3281,7 @@ function fireArc(p, w) {
   let best = null, bs = 1e9; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed) continue; const dx = e.x - p.x, dy = e.y - p.y, dd = hypot(dx, dy); if (dd > d.range * (1 + B.range * .5)) continue;
     const da = abs(angDiff(p.ang, atan2(dy, dx))); if (da > d.cone) continue; const s = dd + da * 200; if (s < bs && los(p.x, p.y, e.x, e.y)) { bs = s; best = e; } }
   const mx = p.x + cos(p.ang) * 14, my = p.y + sin(p.ang) * 14;
-  if (best) { _tmpB.reset(); _tmpB.crit = crit; _tmpB.x = best.x; _tmpB.y = best.y; _tmpB.src = d.n;
+  if (best) { _tmpB.reset(); _tmpB.crit = crit; _tmpB.x = best.x; _tmpB.y = best.y; _tmpB.src = d.n; _tmpB.pc = wPc(d);
     const id = ++_chainId; let cur = best, x = mx, y = my, dm = dmg, jumps = d.chain + B.shockAdd + (B.pierce > 0 ? 1 : 0);
     while (cur) { cur.chainId = id; beamFx(x, y, cur.x, cur.y, crit ? '#fff27a' : '#c9a8ff', 2.6, .14, 16); hurtEnemy(cur, dm, DMG.SHOCK | DMG.BULLET, crit, (cur.x - x) * .5, (cur.y - y) * .5); applyOnHit(cur, _tmpB);
       if (B.syn.superconductor) addChill(cur, 25); if (B.syn.overload) explode(cur.x, cur.y, 34, 20 * expMul(), 0, 'Overload', true);
@@ -3198,21 +3301,27 @@ function fireBeam(p, w, dt) {
   flashLight(w.beam.x2, w.beam.y2, 60 + w.ramp * 40, bpal()[0], .05, .8);
   w.tick -= dt; if (w.tick > 0) return; w.tick += 1 / (d.rate * rateMul(p));
   const crit = rollCrit(p), dmg = d.dmg * dmgMul(p) * (1 + w.ramp * d.rampMul) * (crit ? T.ST.critMul + B.critDmg : 1);
-  _tmpB.reset(); _tmpB.crit = crit; _tmpB.src = d.n;
-  for (let i = 0; i < min(maxHits, hits.length); i++) { const e = hits[i][1]; hurtEnemy(e, dmg, DMG.BULLET, crit, cx * d.kb, cy * d.kb); _tmpB.x = e.x; _tmpB.y = e.y; if (rnd() < .3) applyOnHit(e, _tmpB); spray(e.x, e.y, a + PI, 1.2, 2, ci(e.col), 200, .2, 2); }
+  _tmpB.reset(); _tmpB.crit = crit; _tmpB.src = d.n; _tmpB.pc = wPc(d);
+  for (let i = 0; i < min(maxHits, hits.length); i++) { const e = hits[i][1]; hurtEnemy(e, dmg, DMG.BULLET, crit, cx * d.kb, cy * d.kb); _tmpB.x = e.x; _tmpB.y = e.y; applyOnHit(e, _tmpB); spray(e.x, e.y, a + PI, 1.2, 2, ci(e.col), 200, .2, 2); }
   if (end === wall && _rayTile >= 0 && G.room.tiles[_rayTile] === 2) damageCover(_rayTile, dmg * .5);
   spray(w.beam.x2, w.beam.y2, a + PI, 1.6, 2, ci(bpal()[0]), 220, .2, 2);
+}
+// Mirror Self: the clone repeats the shot from its own position at reduced damage
+function cloneFire(p, w) {
+  const c = G.allies.find(a => a.kind === 'clone'); if (!c) return; const sx = p.x, sy = p.y, sa = p.ang, d = w.def; G.cloning = true; G.cloneMul = .6;
+  p.x = c.x; p.y = c.y; p.ang = atan2(IN.wy - c.y, IN.wx - c.x); const savedAmmo = w.ammo;
+  try { if (d.k === 'rail') fireRail(p, w); else if (d.k === 'arc') fireArc(p, w); else if (d.k !== 'orbit') fireGun(p, w); } finally { p.x = sx; p.y = sy; p.ang = sa; w.ammo = savedAmmo; G.cloning = false; G.cloneMul = 1; }
 }
 function fireBow(p, w) {
   const d = w.def, pw = max(.15, w.charge), full = w.charge >= .98, b = bulletFrom(p, w, p.ang + (rnd() - .5) * .02 * (1 - pw), lerp(d.spd, d.spdMax, pw) / d.spd);
   b.dmg = lerp(d.dmg, d.dmgMax, pw * pw) * dmgMul(p); b.kb = d.kb * pw; if (full) { b.crit = true; b.col = 1; b.pierce += 3; b.r *= 1.3; } b.life *= .6 + pw * .6;
-  muzzle(p, d, .4 + pw * .8); A.play('bow', p.x, p.y, .8, .8 + pw * .4); p.shots++; afterShot(p, w);
+  muzzle(p, d, .4 + pw * .8); A.play('bow', p.x, p.y, .8, .8 + pw * .4); p.shots++; afterShot(p, w); if (B.clone && !G.cloning) { G.cloning = true; G.cloneMul = .6; const c = G.allies.find(a => a.kind === 'clone'); if (c) { const sx = p.x, sy = p.y; p.x = c.x; p.y = c.y; const bb = bulletFrom(p, w, atan2(IN.wy - c.y, IN.wx - c.x)); bb.dmg = b.dmg * .6; p.x = sx; p.y = sy; } G.cloning = false; G.cloneMul = 1; }
 }
 // orbiting blades shred anything they touch (per-enemy cooldown)
 function orbitBlades(p, w) {
   const d = w.def; for (let i = 0; i < w.ammo; i++) { const a = G.time * d.orbitSpd + i / max(1, w.mag) * TAU, bx = p.x + cos(a) * d.orbitR, by = p.y + sin(a) * d.orbitR;
     forEnemiesNear(bx, by, 10, e => { if ((e.orbT || 0) > G.time) return; e.orbT = G.time + .22; const c = rollCrit(p); hurtEnemy(e, d.orbitDmg * dmgMul(p) * (c ? T.ST.critMul + B.critDmg : 1), DMG.MELEE, c, cos(a + PI / 2) * 160, sin(a + PI / 2) * 160);
-      _tmpB.reset(); _tmpB.crit = c; _tmpB.x = bx; _tmpB.y = by; applyOnHit(e, _tmpB); spray(bx, by, a + PI / 2, 1, 5, ci(e.col), 220, .2, 2.5); A.play('blade', bx, by, .35, 1.4); }); }
+      _tmpB.reset(); _tmpB.crit = c; _tmpB.x = bx; _tmpB.y = by; _tmpB.pc = .5; applyOnHit(e, _tmpB); spray(bx, by, a + PI / 2, 1, 5, ci(e.col), 220, .2, 2.5); A.play('blade', bx, by, .35, 1.4); }); }
 }
 function fireBlade(p, w) {
   const d = w.def, b = bulletFrom(p, w, p.ang); b.w = w; b.pierce = 99; b.ret = d.ret; b.dmg = d.dmg * dmgMul(p); muzzle(p, d);
@@ -3274,11 +3383,13 @@ function updateAllies(dt) {
       if (B.syn.swarmai) { a.missT -= dt; if (a.missT <= 0) { a.missT = 3; fireMissiles({ x: a.x, y: a.y, ang: a.ang, buffs: p.buffs, moveT: 0, hp: 1, maxHp: 1 }, 1); } } }
     else if (a.kind === 'orbital') { a.ph += dt * 4 * rm; a.x = p.x + cos(a.ph) * 54; a.y = p.y + sin(a.ph) * 54;
       forEnemiesNear(a.x, a.y, 10, e => { if ((e.orbT || 0) < G.time) { e.orbT = G.time + .3; hurtEnemy(e, T.ST.orbitalDmg * (1 + B.dmg * .5), DMG.SUMMON); _tmpB.reset(); _tmpB.summon = true; applyOnHit(e, _tmpB); spray(a.x, a.y, a.ph, 1, 4, C_HEAL, 200, .2, 2); } }); }
+    else if (a.kind === 'clone') { const tx = p.x - cos(p.ang) * 34 + cos(p.ang + PI / 2) * 22, ty = p.y - sin(p.ang) * 34 + sin(p.ang + PI / 2) * 22; a.x = lerp(a.x, tx, min(1, dt * 7)); a.y = lerp(a.y, ty, min(1, dt * 7)); a.ang = p.ang; }
     else if (a.kind === 'ghost') { const t = nearestEnemy(a.x, a.y, 500); if (t) { const an = atan2(t.y - a.y, t.x - a.x); a.vx = lerp(a.vx, cos(an) * 200, dt * 5); a.vy = lerp(a.vy, sin(an) * 200, dt * 5);
         if (dist2(a.x, a.y, t.x, t.y) < (t.r + a.r) ** 2 && a.cd <= 0) { a.cd = .5; hurtEnemy(t, 15 * (1 + B.dmg * .5), DMG.SUMMON); _tmpB.reset(); _tmpB.summon = true; applyOnHit(t, _tmpB); } } a.x += a.vx * dt; a.y += a.vy * dt; collideTiles(a, a.r, true); }
   }
 }
 function updatePassives(p, dt) {
+  updatePowers(p, dt);
   if (B.tesla) { p.teslaT -= dt; if (p.teslaT <= 0) { p.teslaT = T.ST.teslaCd; const t = nearestEnemy(p.x, p.y, 240, true); if (t) { chainLightning(t, T.ST.teslaDmg * (1 + B.dmg * .5) * B.tesla, 2 + B.shockAdd, p.x, p.y - 10); } } }
   if (G.tick % 60 === 0) syncAllies();
 }
@@ -3287,7 +3398,7 @@ function updatePassives(p, dt) {
 // =====================================================================================
 const UPG = {}; for (const r of UPG_ROWS) UPG[r[0]] = { id: r[0], fam: r[1], rar: r[2], n: r[3], d: r[4], s: r[5], o: r[6] || {} };
 const SYN = {}; for (const r of SYN_ROWS) SYN[r[0]] = { id: r[0], a: r[1], b: r[2], n: r[3], d: r[4] };
-const RAR_NAME = ['Common', 'Rare', 'Epic', 'Legendary', 'Cursed'];
+const RAR_NAME = ['Common', 'Rare', 'Epic', '★ Legendary ★', 'Cursed Pact'];
 function upgDesc(u, html = true) {
   const v = Object.assign({}, T.ST, { burnDps: round(burnDpsPreview()), freezeDur: B ? freezeDur() : T.ST.freezeDur, poisonMax: B ? poisonMax() : T.ST.poisonMax }, u.s);
   return u.d.replace(/\{(\w+)(%?)\}/g, (_, k, pc) => { let x = v[k]; if (x === undefined) return k; x = pc ? round(x * 100) + '%' : (Math.round(x * 10) / 10); return html ? `<b>${x}</b>` : x; });
@@ -3300,11 +3411,11 @@ function upgAllowed(u, run) {
   return true;
 }
 // family-aware, luck-aware weighted offer roll
-function rollOffers(n, minRar, rng) {
+function rollOffers(n, minRar, rng, maxRar = 3) {
   const run = G.run, out = [], pool = Object.values(UPG).filter(u => upgAllowed(u, run));
   const rw = T.rarityW.map((w, i) => max(1, w + T.luckW[i] * (B.luck || 0)));
   for (let k = 0; k < n && pool.length; k++) {
-    let rar; if (rng.chance(T.curseChance * (k === n - 1 ? 1.5 : 0)) && pool.some(u => u.rar === 4)) rar = 4; else { rar = +rng.weighted({ 0: rw[0], 1: rw[1], 2: rw[2], 3: rw[3] }); rar = max(rar, minRar); }
+    let rar; if (rng.chance(T.curseChance * (k === n - 1 ? 1.5 : 0)) && pool.some(u => u.rar === 4)) rar = 4; else { rar = +rng.weighted({ 0: rw[0], 1: rw[1], 2: rw[2], 3: rw[3] }); rar = clamp(rar, minRar, max(minRar, maxRar)); }
     let cand = pool.filter(u => u.rar === rar && !out.includes(u)); for (let r = rar; !cand.length && r >= 0; r--) cand = pool.filter(u => u.rar === r && !out.includes(u));
     if (!cand.length) cand = pool.filter(u => !out.includes(u)); if (!cand.length) break;
     const w = {}; for (const u of cand) { const fc = famCount(u.fam); let wt = 1 + (fc > 0 ? .7 : 0); if (fc === 1 && synPartnerReady(u.fam)) wt += .8; w[u.id] = wt; }
@@ -3323,7 +3434,7 @@ function synHint(u) {
 function pickUpgrade(id, silent = false) {
   const u = UPG[id], run = G.run; for (const k in u.s) B[k] = (B[k] || 0) + u.s[k];
   B.picks[id] = (B.picks[id] || 0) + 1; B.fam[u.fam] = (B.fam[u.fam] || 0) + 1; run.upgrades.push(id); codexSee('upg', id);
-  if (!silent) { A.play(u.rar >= 2 ? 'rare' : 'pick'); }
+  if (!silent) { A.play(u.rar >= 2 ? 'rare' : 'pick'); onPickPower(u); }
   if (run.upgrades.filter(x => UPG[x].rar === 4).length >= 3) unlockAch('cursed3');
   recalcPlayer(); refreshWeapons(); if (G.player) syncAllies(); checkSynergies();
 }
@@ -3339,6 +3450,105 @@ function recalcPlayer() {
   const p = G.player, run = G.run, ch = T.CH[run.char]; if (!p) return;
   const base = ch.hp + (G.meta.boosts.vit || 0) * 8 + B.maxHp, mx = max(10, round(base * (1 + B.maxHpPct)));
   if (mx > p.maxHp) p.hp += mx - p.maxHp; p.maxHp = mx; p.hp = min(p.hp, mx); run.maxHp = mx;
+}
+
+
+// ==== 08b_powers.js ====
+// =====================================================================================
+// SECTION 8b — WEAPONS / UPGRADES: healing, legendary powers, cursed pacts (hooks called from entities/weapons)
+// =====================================================================================
+// ---- per-tick passive powers (called from updatePassives) ---------------------------------------------------------
+function updatePowers(p, dt) {
+  const run = G.run, inFight = DIRECTOR.active || !!G.boss;
+  // base regeneration (always on unless healing is forbidden)
+  if (!B.noHeal && p.hp < p.maxHp) { p.regenAcc = (p.regenAcc || 0) + dt * T.ST.regen * (1 + B.regenPct); if (p.regenAcc >= 1) { p.regenAcc -= 1; p.hp = min(p.maxHp, p.hp + 1); p.regenPulse = .4; } }
+  if (p.regenPulse > 0) p.regenPulse -= dt;
+  if (p.hydraT > 0 && (p.hydraT -= dt) <= 0) p.hydra = 0;
+  if (p.leechB < 4) p.leechB = min(4, (p.leechB || 0) + dt * 4);
+  if (B.blacksun && (p.sunT = (p.sunT || 0) + dt) >= 5) { p.sunT = 0; const t = aimPoint(p, 380); addZone('sun', t.x, t.y, 110, 3, B.sunDps); A.play('ability', t.x, t.y, .6, .6); ring(t.x, t.y, 110, C_FIRE2, .5, 4); }
+  if (B.fracture && inFight && (p.fracT = (p.fracT || 0) + dt) >= 7) { p.fracT = 0; p.buffs.frac = 1.2; A.play('graze', p.x, p.y, 1, .5); screenFlash(.12); aberrate(.008); ring(p.x, p.y, 500, ci('#c8f0ff'), .6, 3); wtext(p.x, p.y - 28, 'TIME STOP', '#c8f0ff', 12, 1, -20); }
+  if (B.stormheart && inFight && (p.stormT = (p.stormT || 0) + dt) >= .6) { p.stormT = 0; const t = randomEnemyNear(p.x, p.y, 280); if (t) { beamFx(t.x + rr(-20, 20), t.y - 260, t.x, t.y, '#d8c2ff', 3, .2, 26); chainLightning(t, 25 * (1 + B.dmg * .5), 1 + B.shockAdd, t.x, t.y - 30); } }
+  if (B.plaguebearer && (p.plagueT = (p.plagueT || 0) + dt) >= .25) { p.plagueT = 0; forEnemiesNear(p.x, p.y, 130, e => addPoison(e, 1)); }
+  if (B.lance && inFight && (p.lanceT = (p.lanceT || 0) + dt) >= 2.5) { let best = null; for (const e of G.enemies) if (!e.dead && e.spawnT <= 0 && !e.burrowed && !e.untouchable && inView(e.x, e.y, 0) && (!best || e.hp > best.hp)) best = e;
+    if (best) { p.lanceT = 0; tele('circle', best.x, best.y, 26, 0, .35, '#fff27a', 0, best); const t = best; addTimer(.35, () => { if (t.dead) return; beamFx(t.x, t.y - 700, t.x, t.y, '#fff27a', 16, .35); beamFx(t.x, t.y - 700, t.x, t.y, '#ffffff', 5, .25); hurtEnemy(t, 120 * (1 + B.dmg), DMG.EXPL, true); ring(t.x, t.y, 50, C_GOLD, .3, 4); trauma(.2); A.play('rail', t.x, t.y, .6, 1.3); }); } }
+  if (B.rearDmg && inFight && (p.rearT = (p.rearT || 0) + dt) >= 2) { let best = null, bd = 400 * 400; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed || e.untouchable) continue; const d = dist2(p.x, p.y, e.x, e.y);
+      if (d < bd && abs(angDiff(p.ang, atan2(e.y - p.y, e.x - p.x))) > PI / 2) { bd = d; best = e; } } if (best) { p.rearT = 0; beamFx(p.x, p.y, best.x, best.y, '#5dff8a', 3, .18); hurtEnemy(best, B.rearDmg * (1 + B.dmg * .5), DMG.SUMMON); A.play('pistol', p.x, p.y, .3, 1.6); } }
+  if (B.haunted && inFight && (p.hauntT = (p.hauntT || 0) + dt) >= 20) { p.hauntT = 0; const cur = curWeapon(p).id, pool = Object.keys(T.W).filter(id => id !== cur), id = rpick(pool);
+    run.weapons[run.wi] = makeWeapon(id); refreshWeapons(); A.stopLoops(); toast('HAUNTED ARSENAL', 'Your weapon became ' + T.W[id].n); burst(p.x, p.y, 20, ci('#b05cff'), 220, .5, 3); }
+  if (B.doomsday && DIRECTOR.active) { run.doomT = (run.doomT === undefined ? 45 : run.doomT) - dt; if (run.doomT <= 0) { run.doomT = 45; const d = p.maxHp * .25; p.hp -= d; p.flash = .2; trauma(.6); screenFlash(.3);
+      A.play('hurt', p.x, p.y); wtext(p.x, p.y - 20, 'DOOMSDAY -' + round(d), '#ff2a4a', 12, 1.2); run.recap.push({ src: 'Doomsday Clock', dmg: round(d), t: G.time, hp: max(0, round(p.hp)) }); if (p.hp <= 0) playerDie('Doomsday Clock'); } }
+  // shadow clone follows behind your aim
+  if (B.clone && !G.allies.some(a => a.kind === 'clone')) addAlly('clone', p.x, p.y, 1e9);
+}
+function randomEnemyNear(x, y, r) { let pick = null, n = 0; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed || e.untouchable || dist2(x, y, e.x, e.y) > r * r) continue; if (rnd() < 1 / ++n) pick = e; } return pick; }
+// ---- damage taken modifiers from powers (called inside hurtEnemy) -------------------------------------------------------
+function powerDmgMul(e) {
+  let m = 1; if (B.meltdown && e.burnT > 0) m *= 1 + B.meltdown; if (B.permafrost && e.frozenT > 0) m *= 3; if (B.mark && G.markE === e) m *= 1 + B.mark; return m;
+}
+// ---- on-hit (bullet) powers -------------------------------------------------------------------------------------------------
+function onHitPower(e, b, dmg, crit) {
+  const p = G.player;
+  if (B.mark && !b.summon) G.markE = e;
+  if (B.warhead && !b.summon && G.time - (p.warheadT || -9) >= 1) { p.warheadT = G.time; explode(e.x, e.y, 60 * expRad(), dmg * expMul(), 0, 'Warhead', true); }
+  if (B.critHeal && crit && p.leechB >= 1) { p.leechB -= 1; healPlayer(B.critHeal, false, true); }
+  if (B.guillotine && !e.dead && !e.boss && !e.untouchable && e.hp < e.maxHp * B.guillotine) { wtext(e.x, e.y - e.r - 8, 'EXECUTED', '#ffef7a', 9, .7); e.hp = 0; killEnemy(e, DMG.BULLET, true); }
+}
+// ---- on-kill powers --------------------------------------------------------------------------------------------------------
+function onKillPower(e) {
+  const p = G.player, run = G.run;
+  if (B.hydra) { p.hydra = min(5, (p.hydra || 0) + 1); p.hydraT = 4; }
+  if (B.permafrost && e.frozenT > 0) { ring(e.x, e.y, 90, C_ICE, .4, 4); forEnemiesNear(e.x, e.y, 90, o => freeze(o, freezeDur())); }
+  if (B.midas) dropGold(e.x, e.y, 1 + (e.def.cost || 1) * .5);
+  if (B.bloodmoon) { p.blood = min(40, (p.blood || 0) + 2); emit(PK.DOT, e.x, e.y, (p.x - e.x) * 2, (p.y - e.y) * 2, .35, 3, C_RED, 0); }
+  if (B.vengeful && !e.boss) { const a = atan2(p.y - e.y, p.x - e.x); eShot(e.x, e.y, a, 165, 8 * (e.dmgMul || 1), 5, 'Vengeful Dead', 3, null); }
+}
+let _okDepth = 0;
+function overkillLeap(e, excess) {
+  if (_okDepth >= 3 || excess < 2) return; let best = null, bd = 240 * 240;
+  for (const o of G.enemies) { if (o === e || o.dead || o.spawnT > 0 || o.burrowed || o.untouchable) continue; const d = dist2(e.x, e.y, o.x, o.y); if (d < bd) { bd = d; best = o; } }
+  if (!best) return; _okDepth++; beamFx(e.x, e.y, best.x, best.y, '#ff4a6a', 4, .2); hurtEnemy(best, excess * .9, DMG.BULLET, false); _okDepth--;
+}
+// ---- dash powers ------------------------------------------------------------------------------------------------------------
+function onDashPower(p) {
+  p.dashId = (p.dashId || 0) + 1; if (B.phaseDmg) p.iframe += .15;
+  if (B.twinfang) { const w = curWeapon(p), d = w.def;
+    for (let i = 0; i < 5; i++) { const a = p.ang + (i - 2) * .16, b = (d.k === 'gun' || d.k === 'bow') ? bulletFrom(p, w, a) : bulletFrom(p, { def: T.W.sidearm }, a); if (d.k !== 'gun') b.dmg = 28 * dmgMul(p); if (b.mine) b.mine = 0; }
+    A.play('blade', p.x, p.y, .8, 1.2); }
+}
+function dashSlice(p) { // Phase Shift: cut through enemies once per dash
+  if (!B.phaseDmg) return; forEnemiesNear(p.x, p.y, 20, e => { if (e.sliceId === p.dashId) return; e.sliceId = p.dashId; hurtEnemy(e, B.phaseDmg * dmgMul(p), DMG.MELEE, false, p.dashDx * 200, p.dashDy * 200); spray(e.x, e.y, atan2(p.dashDy, p.dashDx), 1, 10, ci(p.color), 300, .25, 3); A.play('slash', e.x, e.y, .6); });
+}
+// ---- reload powers ------------------------------------------------------------------------------------------------------------
+function onReloadPower(p, w) {
+  if (!B.blossom) return; const base = (w.def.dmg || 20) * (w.def.cnt || 1) * .6 * dmgMul(p);
+  for (let i = 0; i < 24; i++) { const b = fragBullet(p.x, p.y, i / 24 * TAU, base, 'Death Blossom'); b.bounce = 2; b.life = .6; b.shape = 8; b.r = 4; b.pierce = 1; b.pc = .4; }
+  ring(p.x, p.y, 40, ci(bpal()[0]), .3, 3); A.play('blade', p.x, p.y, 1, .8);
+}
+// ---- player-hurt powers --------------------------------------------------------------------------------------------------------
+function onHurtPower(p) {
+  if (B.reactive) { for (let i = G.ebullets.length - 1; i >= 0; i--) { const b = G.ebullets[i]; if (dist2(b.x, b.y, p.x, p.y) < 110 * 110) { emit(PK.DOT, b.x, b.y, 0, 0, .3, 3, ci(bpal()[2]), 0); freeBullet(G.ebullets, i); } }
+    forEnemiesNear(p.x, p.y, 130, e => { const a = atan2(e.y - p.y, e.x - p.x); e.kbx += cos(a) * 380 / e.mass; e.kby += sin(a) * 380 / e.mass; }); ring(p.x, p.y, 110, ci('#7ff6ff'), .35, 4); }
+}
+// absorb damage with Blood Moon blood and Second Heart overheal (returns remaining damage)
+function absorbPower(p, dmg) {
+  for (const k of ['blood', 'oshield']) if (p[k] > 0 && dmg > 0) { const a = min(p[k], dmg); p[k] -= a; dmg -= a; }
+  return dmg;
+}
+// ---- legendary + pact presentation --------------------------------------------------------------------------------------------
+function onPickPower(u) {
+  const p = G.player; if (!p) return;
+  if (u.rar === 3) { setTimeout(() => { toast('★ LEGENDARY ★', u.n.toUpperCase(), true); A.play('legendary'); MUS.stinger('synergy'); }, 120); slowmo(.35, .7); screenFlash(.25);
+    ring(p.x, p.y, 160, C_GOLD, .7, 6); ring(p.x, p.y, 90, C_WHITE, .5, 3); burst(p.x, p.y, 60, C_GOLD, 420, .9, 4, PK.SHARD, 2); }
+  else if (u.rar === 4) { setTimeout(() => { toast('PACT SEALED', u.n.toUpperCase()); A.play('roar', p.x, p.y, .35, 1.8); }, 120); ring(p.x, p.y, 120, ci('#ff3355'), .6, 5); burst(p.x, p.y, 30, ci('#ff3355'), 260, .7, 3, PK.SHARD, 2); }
+}
+function removeUpgrade(id) { // used by cleansing; reverses the stat rows
+  const u = UPG[id], run = G.run, i = run.upgrades.indexOf(id); if (i < 0) return; run.upgrades.splice(i, 1);
+  for (const k in u.s) B[k] -= u.s[k]; B.picks[id]--; B.fam[u.fam]--; recalcPlayer(); refreshWeapons();
+}
+// ---- Hunted: the unkillable stalker -----------------------------------------------------------------------------------------------
+function spawnStalker() {
+  const room = G.room, p = G.player; let best = room.spawns[0], bd = 0; for (const s of room.spawns) { const d = dist2(s.x, s.y, p.x, p.y); if (d > bd) { bd = d; best = s; } }
+  if (!best) return; const e = spawnEnemy('stalker', best.x, best.y, { noCodex: true }); e.untouchable = true; e.inv = 1e9; e.noDrop = true;
 }
 
 
@@ -3460,6 +3670,10 @@ function hudVitals(c, p, run, dt) {
   hudBar(c, x, y, w, h, HUDS.hpGhost, 'rgba(255,255,255,.55)', 'rgba(255,40,70,.12)');
   const g = c.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, f < .3 ? '#ff2a4a' : '#ff4a6a'); g.addColorStop(1, f < .3 ? '#ff6a3a' : '#ff8ab0'); c.fillStyle = g; c.fillRect(x, y, w * f, h);
   if (p.shieldMax) hudBar(c, x, y + h - 4, w, 4, p.shield / p.shieldMax, '#5dff8a', 'rgba(0,0,0,0)');
+  if (p.blood > 0) hudBar(c, x, y - 7, w * 40 / 100, 4, p.blood / 40, '#ff2a4a', 'rgba(255,40,70,.15)');
+  if (p.oshield > 0) hudBar(c, x + w * .45, y - 7, w * .55, 4, p.oshield / B.overheal, '#ffe23a', 'rgba(255,226,58,.15)');
+  if (p.regenPulse > 0) { c.strokeStyle = `rgba(93,255,138,${p.regenPulse * 1.5})`; c.lineWidth = 2; c.strokeRect(x - 2, y - 2, w + 4, h + 4); }
+  if (p.hydra > 0) { c.font = '800 12px ui-monospace,monospace'; c.fillStyle = '#3dffd8'; c.textAlign = 'left'; c.fillText('HYDRA +' + p.hydra, x + w + 30, y + h / 2); }
   c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1; for (let i = 1; i < p.maxHp / 25; i++) { const sx = x + w * i * 25 / p.maxHp; c.beginPath(); c.moveTo(sx, y); c.lineTo(sx, y + h); c.stroke(); }
   c.fillStyle = '#fff'; c.textAlign = 'left'; c.font = '700 12px ui-monospace,monospace'; c.fillText(`${ceil(p.hp)} / ${p.maxHp}`, x + 6, y + h / 2 + 1);
   if (B.barrier) { c.fillStyle = p.barrierT <= 0 ? '#7fdcff' : 'rgba(127,220,255,.25)'; c.beginPath(); c.arc(x + w + 16, y + h / 2, 7, 0, TAU); c.fill(); }
@@ -3501,11 +3715,13 @@ function hudMinimap(c, run, W) {
   const p = G.player; c.fillStyle = '#7ff6ff'; c.beginPath(); c.arc(x0 + p.x * k, y0 + p.y * k, 3, 0, TAU); c.fill();
   c.textAlign = 'right'; c.font = '700 10px ui-monospace,monospace'; c.fillStyle = T.BIO[run.biome].edge; const node = run.map.byId[run.map.cur];
   c.fillText(`${T.BIO[run.biome].n} · ${node ? ROOM_NAME[node.type].toUpperCase() : ''}`, W - 20, mh + 38); c.fillStyle = '#8a93b8'; c.fillText(`${fmtTime(run.stats.time)}  ·  SEED ${run.seed}${run.heat ? '  ·  HEAT ' + run.heat : ''}`, W - 20, mh + 52);
+  if (run.perf > 1.05) { c.fillStyle = run.perf > 1.4 ? '#ff5470' : '#ffb020'; c.fillText(`THREAT ×${run.perf.toFixed(2)}`, W - 20, mh + 66); }
 }
 function hudTop(c, run, W, H) {
   const b = G.boss;
   if (b && !b.dead && b.introT <= 0) { const w = min(620, W * .5), x = (W - w) / 2, y = 28, f = b.hp / b.maxHp; c.textAlign = 'center'; c.font = '800 13px Segoe UI,Arial'; c.fillStyle = '#fff'; c.fillText(T.boss[b.bossId].n, W / 2, y - 10);
     c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(x - 3, y - 3, w + 6, 16); hudBar(c, x, y, w, 10, f, b.col); c.fillStyle = '#000'; for (const k of [.66, .33]) c.fillRect(x + w * k - 1, y, 2, 10); return; }
+  if (B.doomsday && DIRECTOR.active && run.doomT !== undefined) { const t = max(0, run.doomT); c.textAlign = 'center'; c.font = '900 22px Segoe UI,Arial'; c.fillStyle = t < 10 && (G.rt * 4 % 1) < .5 ? '#ffffff' : '#ff2a4a'; c.fillText('☠ ' + ceil(t), W / 2, 56); }
   if (DIRECTOR.active && G.room.type === 'challenge') { c.textAlign = 'center'; c.font = '900 28px Segoe UI,Arial'; c.fillStyle = '#ff8a2b'; c.fillText(ceil(DIRECTOR.challengeT), W / 2, 34); return; }
   const n = G.alive; if (!G.room.cleared && (n || DIRECTOR.active)) { c.textAlign = 'center'; c.font = '700 12px ui-monospace,monospace'; c.fillStyle = '#ff8ab0'; c.fillText(`◉ ${n}  ${['BUILD', 'PEAK', 'LULL'][DIRECTOR.phase]}`, W / 2, 26); }
   else if (G.room.open && G.room.type !== 'boss') { c.textAlign = 'center'; c.font = '700 12px ui-monospace,monospace'; c.fillStyle = '#50ffaa'; c.globalAlpha = .6 + .4 * sin(G.rt * 4); c.fillText('▲ EXIT OPEN ▲', W / 2, 26); c.globalAlpha = 1; }
@@ -3659,8 +3875,11 @@ function mapScreen() {
 // reward cards (after rooms)
 function rewardScreen(opts) {
   const run = G.run; G.paused = true; A.stopLoops(); document.body.classList.remove('play');
-  const n = max(2, 3 - (run.heat > 7 ? 1 : 0) + (opts.extra || 0)), rng = new RNG(`${run.seed}:${run.biome}:${run.map.cur}:offer:${run.rerollN || 0}:${opts.tag || ''}`);
-  const offers = opts.offers || rollOffers(n, opts.minRar || 0, rng);
+  const n = max(2, 3 - (run.heat > 7 ? 1 : 0) + (opts.extra || 0) + (B.extraChoice || 0)), rng = new RNG(`${run.seed}:${run.biome}:${run.map.cur}:offer:${run.rerollN || 0}:${opts.tag || ''}`);
+  const room = G.room, cap = opts.maxRar !== undefined ? opts.maxRar : room.type === 'boss' || opts.tag === 'chest' ? 3 : min(3, T.rarCap[run.biome] + (room.type === 'elite' || room.type === 'challenge' ? 1 : 0));
+  const offers = opts.offers || rollOffers(n, opts.minRar || 0, rng, cap);
+  if (opts.legendary && !opts.offers && !offers.some(u => u.rar === 3)) { const leg = Object.values(UPG).filter(u => u.rar === 3 && upgAllowed(u, run)); if (leg.length) offers[0] = rng.pick(leg); }
+  opts.offers = offers; const hasLeg = offers.some(u => u.rar === 3); if (hasLeg) setTimeout(() => { A.play('legendary'); }, 250);
   const done = () => { UI.clear(); G.paused = false; document.body.classList.add('play'); IN.clearHits(); if (opts.then) opts.then(); };
   const cards = offers.map((u, i) => cardHTML(u, UI.a(() => { pickUpgrade(u.id); done(); }) + ` data-nav`)).join('');
   UI.show(`<div class="panel clear" style="text-align:center"><h2>${opts.title || 'Choose an Upgrade'}</h2><p class="dim" style="margin-bottom:18px">${opts.sub || 'Press 1–3 or click a card'}</p><div class="cards">${cards}</div>
@@ -3761,12 +3980,12 @@ function enterNode(node) {
   G.grid.reset(room.w * TS, room.h * TS); PATH.init(room); TAC.reset();
   p.x = p.px = room.entry.x; p.y = p.py = room.entry.y; p.vx = p.vy = 0; p.dashT = 0; p.phoenixUsed = false; p.ghosts.length = 0;
   G.cam.x = p.x; G.cam.y = p.y - 100; G.cam.zt = 1; G.allies.forEach(a => { a.x = a.px = p.x; a.y = a.py = p.y; });
-  run.roomHit = false; run.roomT = 0; G.state = 'play'; G.paused = false; document.body.classList.add('play'); IN.clearHits();
+  run.roomHit = false; run.roomDmg = 0; run.roomT = 0; G.state = 'play'; G.paused = false; document.body.classList.add('play'); IN.clearHits();
   for (const b of room.barrels) addProp('barrel', b.x, b.y);
   MUS.setTheme(run.biome, node.type === 'boss'); A.play('door', p.x, p.y, .8, .8); screenFlash(.15);
   const type = node.type;
-  if (type === 'combat' || type === 'elite' || type === 'challenge') { DIRECTOR.start(room); if (type === 'elite') toast('ELITE ROOM', 'Stronger foes, richer rewards'); if (B.sentry) addAlly('sentry', p.x + 30, p.y - 40, 1e9); }
-  else if (type === 'boss') { DIRECTOR.active = false; BOSS.spawn(T.BIO[run.biome].boss); }
+  if (type === 'combat' || type === 'elite' || type === 'challenge') { DIRECTOR.start(room); if (type === 'elite') toast('ELITE ROOM', 'Stronger foes, richer rewards'); if (B.sentry) addAlly('sentry', p.x + 30, p.y - 40, 1e9); if (B.hunted) addTimer(2, spawnStalker); run.doomT = 45; }
+  else if (type === 'boss') { DIRECTOR.active = false; BOSS.spawn(T.BIO[run.biome].boss); if (B.hunted) addTimer(4, spawnStalker); }
   else { DIRECTOR.active = false; room.cleared = true; room.open = true; setupSpecialRoom(room, node); MUS.setIntensity(.5); }
 }
 const ROOMS = {
@@ -3783,15 +4002,18 @@ const ROOMS = {
 function roomCleared() {
   const room = G.room, run = G.run, p = G.player; room.cleared = true; run.stats.rooms++;
   A.play('clear'); MUS.stinger('clear'); MUS.setIntensity(.5); A.play('door', p.x, p.y);
-  const D = T.director; run.perf = clamp(run.perf + (run.roomHit ? -.04 : .06), .85, 1.2);
+  // adaptive threat: fast, clean clears raise enemy HP/budget for the next rooms; struggling lowers it
+  const S = T.scale, rate = DIRECTOR.spent / max(6, run.roomT), heavy = (run.roomDmg || 0) > p.maxHp * S.heavyHit;
+  if (room.type !== 'challenge') run.perf = clamp(run.perf + (rate > S.fastRate ? S.perfUp : rate < S.slowRate ? -S.perfDown : .02) + (heavy ? -S.perfDown : 0) + (run.roomHit ? 0 : .02), S.perfMin, S.perfMax);
   if (room.type === 'elite' && !run.roomHit) unlockAch('untouch');
   if (B.secondWind && p.hp < p.maxHp * .4) healPlayer(p.maxHp * B.secondWind);
+  healPlayer(p.maxHp * T.ST.roomHeal); for (const e of G.enemies) if (e.untouchable) { e.dead = true; burst(e.x, e.y, 30, ci(e.col), 300, .6, 4, PK.SHARD); }
   dropGold(p.x, p.y - 40, T.gold.room * (room.type === 'elite' ? 1.8 : 1) * (1 + B.gold));
   if (run.biome === 3 && !run.reachedCore) { run.reachedCore = true; }
   const open = () => { room.open = true; wtext(p.x, p.y - 30, 'EXIT OPEN', '#50ffaa', 12, 1.2, -20); };
   const chaos = () => { if (B.chaos) { const u = rollOffers(1, 0, run.rng)[0]; if (u) { pickUpgrade(u.id); toast('UNSTABLE RIFT', u.n); } } };
   if (room.type === 'boss') {
-    addTimer(.6, () => rewardScreen({ title: 'Boss Defeated', sub: 'Choose a powerful upgrade', minRar: 2, extra: 1, tag: 'boss', then: () => {
+    addTimer(.6, () => rewardScreen({ title: 'Boss Defeated', sub: 'A legendary power awaits', minRar: 2, extra: 1, tag: 'boss', legendary: true, then: () => {
       const c = arenaC(); const last = run.biome >= 3;
       addProp('portal', c.x, c.y, { r: 30, interact: () => last ? endRun(true) : nextBiome(), label: last ? 'ASCEND' : 'NEXT SECTOR', sub: last ? 'Finish the run' : T.BIO[run.biome + 1].n });
       healPlayer(p.maxHp * .25, true); open(); } }));
@@ -3828,7 +4050,7 @@ function setupSpecialRoom(room, node) {
   const run = G.run, c = { x: room.w * TS / 2, y: room.h * TS / 2 }, rng = new RNG(room.seed + ':special');
   if (node.type === 'shop') {
     toast('SHOP', 'Walk up to an item and press ' + bindLabel(IN.binds.interact[0]));
-    const offers = rollOffers(3, 0, rng), items = offers.map(u => ({ kind: 'upg', u, price: T.price.rar[u.rar] }));
+    const offers = rollOffers(3, 0, rng, min(3, T.rarCap[run.biome] + 1)), items = offers.map(u => ({ kind: 'upg', u, price: T.price.rar[u.rar] }));
     const wpool = Object.keys(T.W).filter(id => weaponUnlocked(id) && !run.weapons.some(w => w.id === id)); if (wpool.length) items.push({ kind: 'weapon', id: rng.pick(wpool), price: T.price.weapon });
     items.push({ kind: 'active', id: rng.pick(Object.keys(T.ACT)), price: T.price.active }, { kind: 'heal', price: T.price.heal }, { kind: 'reroll', price: T.price.reroll });
     items.forEach((it, i) => { const k = items.length, x = c.x + (i - (k - 1) / 2) * 70, y = c.y - 10 + (i % 2) * 30;
@@ -3846,7 +4068,9 @@ function setupSpecialRoom(room, node) {
   }
 }
 function buyItem(pr) {
-  const run = G.run, it = pr.it; if (pr.sold) return; if (run.gold < it.price) { A.play('deny'); wtext(pr.x, pr.y - 30, 'NOT ENOUGH ◆', '#ff5470', 9); return; }
+  const run = G.run, it = pr.it; if (pr.sold) return;
+  if (B.toll) { const p = G.player, c = round(p.maxHp * .15); if (p.hp <= c) { A.play('deny'); wtext(pr.x, pr.y - 30, 'TOO WEAK TO PAY', '#ff5470', 9); return; } p.hp -= c; p.flash = .15; wtext(p.x, p.y - 20, 'TOLL -' + c, '#ff3355', 11); it.price = 0; }
+  if (run.gold < it.price) { A.play('deny'); wtext(pr.x, pr.y - 30, 'NOT ENOUGH ◆', '#ff5470', 9); return; }
   run.gold -= it.price; pr.sold = true; pr.label = 'SOLD'; pr.sub = ''; A.play('buy'); UI.hint('');
   if (it.kind === 'upg') pickUpgrade(it.u.id); else if (it.kind === 'weapon') offerWeapon(it.id); else if (it.kind === 'active') offerActive(it.id);
   else if (it.kind === 'heal') { healPlayer(30, true); A.play('heal'); } else run.rerolls++;
@@ -3864,6 +4088,7 @@ function restChoice(pr) {
     [`Rest — heal ${round(p.maxHp * heal)} HP`, () => { pr.used = true; healPlayer(p.maxHp * heal, true); A.play('heal'); }, 'pri'],
     [`Train — +${T.rest.maxHp} max HP`, () => { pr.used = true; B.maxHp += T.rest.maxHp; recalcPlayer(); A.play('pick'); }],
     ['Meditate — choose an upgrade', () => { pr.used = true; rewardScreen({ title: 'Meditation', tag: 'rest' }); }],
+    ...(G.run.upgrades.some(id => UPG[id].rar === 4) ? [['Cleanse — break your newest pact', () => { pr.used = true; const id = [...G.run.upgrades].reverse().find(i => UPG[i].rar === 4); removeUpgrade(id); toast('PACT BROKEN', UPG[id].n); A.play('heal'); }]] : []),
   ]);
 }
 const EVENTS = [
@@ -3882,7 +4107,7 @@ function runEvent(rng) { const ev = rng.pick(EVENTS); choiceDialog(ev.t, ev.d, e
 const BOT = { mx: 0, my: 0, fire: false, dash: false, ability: false, ax: 0, ay: 0, t: 0, path: null, stuck: 0 };
 function botThink(dt) {
   const p = G.player, room = G.room; if (!p || p.dead) return; BOT.t -= dt;
-  let tgt = null, bd = 1e9; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed) continue; const d = dist2(p.x, p.y, e.x, e.y) * (e.los ? 1 : 3); if (d < bd) { bd = d; tgt = e; } }
+  let tgt = null, bd = 1e9; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed || e.untouchable) continue; const d = dist2(p.x, p.y, e.x, e.y) * (e.los ? 1 : 3); if (d < bd) { bd = d; tgt = e; } }
   let mx = 0, my = 0;
   // dodge: repel from incoming bullets
   let danger = 0; for (const b of G.ebullets) { const dx = p.x - b.x, dy = p.y - b.y, d2 = dx * dx + dy * dy; if (d2 > 140 * 140) continue; const d = sqrt(d2), app = -(dx * b.vx + dy * b.vy) / (d * hypot(b.vx, b.vy) + 1e-3);

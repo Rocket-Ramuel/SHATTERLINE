@@ -13,7 +13,7 @@ class Bullet {
     this.crit = false; this.pierce = 0; this.bounce = 0; this.bounces = 0; this.homing = 0; this.split = 0; this.splitDepth = 0; this.isFrag = false; this.explode = 0; this.expDmg = 0;
     this.burn = 0; this.chill = 0; this.shock = 0; this.poison = 0; this.kb = 0; this.src = ''; this.ret = 0; this.acc = 0; this.maxSpd = 0; this.drag = 0; this.mine = 0; this.armT = 0;
     this.forked = false; this.dist = 0; this.h0 = this.h1 = this.h2 = this.h3 = 0; this.hn = 0; this.ebounce = 0; this.grazed = false; this.owner = null; this.dead = false;
-    this.w = null; this.lastHit = 0; this.zapT = 0; this.wallPass = -1; this.curve = 0; this.delay = 0; this.wave = 0; this.waveA = 0; this.baseAng = 0; this.big = false; this.phase = false; this.pierced = 0; this.critBonus = 0; this.lightning = 0; this.seek = false; this.missile = false; this.summon = false; this.spd0 = 0;
+    this.pc = 1; this.expChance = 1; this.w = null; this.lastHit = 0; this.zapT = 0; this.wallPass = -1; this.curve = 0; this.delay = 0; this.wave = 0; this.waveA = 0; this.baseAng = 0; this.big = false; this.phase = false; this.pierced = 0; this.critBonus = 0; this.lightning = 0; this.seek = false; this.missile = false; this.summon = false; this.spd0 = 0;
   }
   hitBefore(id) { return this.h0 === id || this.h1 === id || this.h2 === id || this.h3 === id; }
   markHit(id) { switch (this.hn++ & 3) { case 0: this.h0 = id; break; case 1: this.h1 = id; break; case 2: this.h2 = id; break; default: this.h3 = id; } }
@@ -51,7 +51,7 @@ function makePlayer(run) {
     x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, r: T.player.r, ang: 0, hp: run.hp, maxHp: run.maxHp, dead: false, deadT: 0,
     dashT: 0, dashCd: 0, dashCharges: 1, dashDx: 0, dashDy: 0, iframe: 0, hitT: 0, ghosts: [], ghostT: 0,
     abilityCd: 0, recX: 0, recY: 0, squash: 0, bob: 0, flash: 0, muzzle: 0, shots: 0, hits: 0, still: 0, moveT: 0,
-    buffs: { dmg: 0, rate: 0, crit: 0, overdrive: 0, aegis: 0, adren: 0 }, cascade: 0, cascadeT: 0, autoCrit: 0, reloadCrits: 0,
+    buffs: { dmg: 0, rate: 0, crit: 0, overdrive: 0, aegis: 0, adren: 0, frac: 0, warp: 0, shat: 0 }, hydra: 0, hydraT: 0, blood: 0, oshield: 0, regenAcc: 0, regenPulse: 0, leechB: 4, cascade: 0, cascadeT: 0, autoCrit: 0, reloadCrits: 0,
     shield: run.char === 'bastion' ? 20 : 0, shieldMax: run.char === 'bastion' ? 20 : 0, shieldT: 0, barrierT: 0, phoenixUsed: false, teslaT: 0, killsForNuke: 0, voltCount: 0, color: ch.col,
   };
 }
@@ -76,7 +76,7 @@ function updatePlayer(dt) {
     p.ghostT -= dt; if (p.ghostT <= 0) { p.ghostT = .022; p.ghosts.push({ x: p.x, y: p.y, a: p.ang, t: .22 }); }
     dashTrails(p, dt);
   } else {
-    let spd = TP.speed * ch.spd * max(.3, 1 + B.speed); const w = curWeapon(p);
+    let spd = TP.speed * ch.spd * max(.3, 1 + B.speed + (B.adrenal && p.hp < p.maxHp * .5 ? .25 : 0)); const w = curWeapon(p);
     if (w.def.slow && IN.down.fire && w.spin > .1) spd *= w.def.slow;
     if (w.def.k === 'bow' && w.charge > 0) spd *= .75;
     const tvx = mx * spd, tvy = my * spd, acc = TP.accel * (onIce ? T.haz.ice.friction : 1), fr = TP.friction * (onIce ? T.haz.ice.friction : 1);
@@ -114,9 +114,10 @@ function startDash(p, mx, my, dcd) {
   if (B.syn.stormcaller) { let n = 3; forEnemiesNear(p.x, p.y, 260, e => { if (n-- > 0) { beamFx(e.x, e.y - 300, e.x, e.y, '#d8c2ff', 4, .25, 30); hurtEnemy(e, 40, DMG.SHOCK); flashLight(e.x, e.y, 120, '#b98bff', .15); } }); }
   if (B.dashBomb) { const b = newBullet(0); b.x = b.px = p.x; b.y = b.py = p.y; b.life = .6; b.r = 6; b.shape = 6; b.explode = 70 * expRad(); b.expDmg = T.ST.bombDmg * expMul(); b.src = 'bomb'; b.pierce = 99; b.mine = 2; }
   if (B.dashAcid) addZone('acid', p.x, p.y, 40, 3, 0);
+  onDashPower(p);
 }
 function dashTrails(p, dt) {
-  p.trailT = (p.trailT || 0) - dt; if (p.trailT > 0) return; p.trailT = .03;
+  dashSlice(p); p.trailT = (p.trailT || 0) - dt; if (p.trailT > 0) return; p.trailT = .03;
   if (B.dashFire) addZone('fire', p.x, p.y, B.syn.wildfire ? 28 : 18, T.ST.dashFireDur, B.dashFire);
 }
 function playerHazard(p, hz, dt) {
@@ -128,7 +129,7 @@ function playerHazard(p, hz, dt) {
 }
 function aimAssist(p, a) {
   let best = null, bs = .18;
-  for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed) continue; const d = hypot(e.x - p.x, e.y - p.y); if (d > 480) continue;
+  for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed || e.untouchable) continue; const d = hypot(e.x - p.x, e.y - p.y); if (d > 480) continue;
     const da = abs(angDiff(a, atan2(e.y - p.y, e.x - p.x))); const s = da + d / 4000; if (da < .2 && s < bs) { bs = s; best = e; } }
   return best ? lerpAng(a, atan2(best.y - p.y, best.x - p.x), .65) : a;
 }
@@ -137,11 +138,13 @@ function hurtPlayer(dmg, src, x, y) {
   if (B.barrier && p.barrierT <= 0) { p.barrierT = T.ST.barrierCd; p.hitT = .5; A.play('shieldhit', p.x, p.y); ring(p.x, p.y, 30, ci('#7fdcff'), .4, 4); burst(p.x, p.y, 16, C_ICE, 200, .4, 3); hitstop(.03); return false; }
   const run = G.run; dmg *= (1 + B.dmgTaken) * (run.heat > 4 ? 1.2 : 1) * (run.char === 'bastion' ? .85 : 1) * (G.settings.assist ? .5 : 1);
   if (p.shield > 0) { const a = min(p.shield, dmg); p.shield -= a; dmg -= a; p.shieldT = 3; if (dmg <= 0) { p.hitT = .4; A.play('shieldhit', p.x, p.y, .7); ring(p.x, p.y, 26, ci('#5dff8a'), .3); return true; } }
-  p.hp -= dmg; p.hitT = T.player.hitIframe; p.flash = .12; run.stats.dmgTaken += dmg; run.roomHit = true;
+  dmg = absorbPower(p, dmg); if (dmg <= 0) { p.hitT = .4; A.play('shieldhit', p.x, p.y, .7); ring(p.x, p.y, 26, C_RED, .3); return true; }
+  p.hp -= dmg; p.hitT = T.player.hitIframe * (B.shattered ? .2 : 1); p.flash = .12; run.stats.dmgTaken += dmg; run.roomHit = true; run.roomDmg = (run.roomDmg || 0) + dmg;
   run.recap.push({ src, dmg: round(dmg), t: G.time, hp: max(0, round(p.hp)) }); if (run.recap.length > 8) run.recap.shift();
   DIRECTOR.onPlayerHurt(dmg);
   A.play('hurt', p.x, p.y); trauma(.55); hitstop(.06); aberrate(T.fx.abberation * 1.6); screenFlash(.12);
   burst(p.x, p.y, 18, C_RED, 260, .45, 3); ring(p.x, p.y, 34, C_RED, .3, 3); wtext(p.x, p.y - 14, '-' + round(dmg), '#ff5470', 11, .8, -45);
+  onHurtPower(p);
   if (B.hurtFreeze) { ring(p.x, p.y, 140, C_ICE, .5, 5); forEnemiesNear(p.x, p.y, 140, e => freeze(e, freezeDur())); A.play('shatter', p.x, p.y); }
   if (p.hp <= 0) {
     if (B.phoenix && !p.phoenixUsed) { p.phoenixUsed = true; p.hp = p.maxHp * .4; p.hitT = 2; explode(p.x, p.y, 180, 120, 0, 'Phoenix'); addZone('fire', p.x, p.y, 120, 3, 25);
@@ -150,8 +153,10 @@ function hurtPlayer(dmg, src, x, y) {
   }
   return true;
 }
-function healPlayer(v, force = false) {
-  const p = G.player; if (!p || p.dead || (B.noHeal && !force)) return; const h = min(v, p.maxHp - p.hp); if (h <= 0) return;
+function healPlayer(v, force = false, quiet = false) {
+  const p = G.player; if (!p || p.dead || (B.noHeal && (!force || B.bloodmoon))) return; const h = min(v, p.maxHp - p.hp);
+  if (B.overheal && v > h) { p.oshield = min(B.overheal, (p.oshield || 0) + v - max(0, h)); }
+  if (h <= 0) return; if (quiet) { p.hp += h; p.regenPulse = .4; return; }
   p.hp += h; wtext(p.x, p.y - 16, '+' + round(h), '#5dff8a', 10, .8, -40); burst(p.x, p.y, 8, C_HEAL, 120, .5, 2, PK.DOT);
 }
 function playerDie(src) {
@@ -165,6 +170,7 @@ function playerDie(src) {
 function hurtEnemy(e, dmg, kind, crit = false, kx = 0, ky = 0) {
   if (e.dead || e.spawnT > 0 || e.inv > 0 || e.burrowed) return 0;
   if (e.frozenT > 0) dmg *= 1 + B.brittle;
+  dmg *= powerDmgMul(e);
   if (e.poison > 0) dmg *= 1 + B.corrode * e.poison;
   if (e.buffT > 0) dmg *= 1 - T.E.warden.buffDef;
   if (kind & DMG.SHOCK && e.poison > 0 && B.syn.electrolysis) dmg *= 1.5;
@@ -175,7 +181,7 @@ function hurtEnemy(e, dmg, kind, crit = false, kx = 0, ky = 0) {
   if (kx || ky) { const m = e.boss ? 0 : 1 / (e.mass || 1); e.kbx += kx * m; e.kby += ky * m; }
   if (dmg >= 1 || crit) dmgNumber(e.x, e.y - e.r, dmg, crit, kind & DMG.DOT ? '#bfc8dc' : kind & DMG.SHOCK ? '#d8c2ff' : null);
   if (e.boss) BOSS.onHurt(e, dmg);
-  if (e.hp <= 0) killEnemy(e, kind, crit);
+  if (e.hp <= 0) { const ex = -e.hp; killEnemy(e, kind, crit); if (B.overkill) overkillLeap(e, ex); }
   return dmg;
 }
 function killEnemy(e, kind, crit) {
@@ -196,8 +202,8 @@ function killEnemy(e, kind, crit) {
   if (!e.noDrop) {
     const gold = (def.cost || 1) * T.gold.enemy * (e.elite ? T.gold.elite / 1.4 : 1) * (1 + B.gold) * (1 + min(run.combo, 30) * .01);
     dropGold(e.x, e.y, gold);
-    const hpF = p.hp / p.maxHp, ch = .018 + (hpF < .35 ? .03 : 0) + (DIRECTOR.phase === 2 ? .02 : 0);
-    if (!(G.run.heat > 9) && rnd() < ch * (e.elite ? 4 : 1)) dropPickup('heal', e.x, e.y, 8);
+    const hpF = p.hp / p.maxHp, ch = (T.ST.healDrop + (hpF < .35 ? .03 : 0) + (DIRECTOR.phase === 2 ? .02 : 0)) * (1 + B.healDrop);
+    if (!(G.run.heat > 9)) { if (e.elite) dropPickup('heal', e.x, e.y, T.ST.eliteHeal + B.healOrbAdd); else if (rnd() < ch) dropPickup('heal', e.x, e.y, T.ST.healOrb + B.healOrbAdd); }
   }
   DIRECTOR.onKill(e);
   // on-kill effects
@@ -216,6 +222,7 @@ function killEnemy(e, kind, crit) {
   if (B.killExplode && rnd() < B.killExplode) explode(e.x, e.y, 60 * expRad(), 50 * expMul(), 0, 'Volatile', true);
   if (B.killSeeker) { const b = fragBullet(e.x, e.y, rnd() * TAU, T.ST.seekerDmg * (1 + B.dmg), 'Seeker'); b.homing = 9; b.life = 1.6; b.seek = true; b.vx *= .7; b.vy *= .7; }
   if (B.ghosts && rnd() < B.ghosts) spawnGhost(e);
+  onKillPower(e);
   if (B.nuke) { p.killsForNuke++; if (p.killsForNuke >= T.ST.nukeKills) { p.killsForNuke = 0; nukeStrike(); } }
   // elite / special deaths
   if (e.mods) {
@@ -237,11 +244,15 @@ function addChill(e, v) {
   if (e.dead || e.frozenT > 0) return; e.chill += v;
   if (e.chill >= T.ST.chillMax) { e.chill = 0; if (e.boss) { e.chill = T.ST.chillMax * .5; return; } freeze(e, freezeDur()); }
 }
-function freeze(e, d) { if (e.boss || e.dead) return; e.frozenT = d; e.atkPhase = 0; A.play('shatter', e.x, e.y, .35, 1.6); burst(e.x, e.y, 8, C_ICE, 140, .4, 2.5, PK.SHARD); }
-function addPoison(e, n) { if (e.dead) return; e.poison = min(poisonMax(), e.poison + n); e.poisonT = T.ST.poisonDecay; }
+let _cryoDepth = 0;
+function freeze(e, d) { if (e.boss || e.dead) return; const was = e.frozenT > 0; e.frozenT = d;
+  if (B.cryoBurst && !was && _cryoDepth < 2) { _cryoDepth++; ring(e.x, e.y, 90, C_ICE, .3, 3); forEnemiesNear(e.x, e.y, 90, o => { if (o !== e) addChill(o, 40); }); _cryoDepth--; } e.atkPhase = 0; A.play('shatter', e.x, e.y, .35, 1.6); burst(e.x, e.y, 8, C_ICE, 140, .4, 2.5, PK.SHARD); }
+function addPoison(e, n) { if (e.dead) return; e.poison = min(poisonMax(), e.poison + n); e.poisonT = T.ST.poisonDecay;
+  if (B.venomBurst && e.poison >= poisonMax() && (e.venomT || 0) < G.time) { e.venomT = G.time + 1; e.poison *= .5; burst(e.x, e.y, 16, C_POISON, 260, .5, 3); ring(e.x, e.y, 80, C_POISON, .35, 4); A.play('explodeS', e.x, e.y, .5, 1.4);
+    forEnemiesNear(e.x, e.y, 80, o => { if (o !== e) hurtEnemy(o, B.venomBurst * (1 + B.dmg * .5), DMG.EXPL); }); } }
 function updateStatus(e, dt) {
   if (e.burnT > 0) { e.burnT -= dt; e.burnAcc += e.burnDps * dt; e.fxT -= dt; if (e.fxT <= 0) { e.fxT = .07; emit(PK.DOT, e.x + rr(-e.r, e.r), e.y + rr(-e.r, e.r), rr(-20, 20), -rr(40, 90), .5, 2.2, rnd() < .5 ? C_FIRE : C_FIRE2, 2); } }
-  if (e.poison > 0) { e.poisonAcc += e.poison * poisonDps() * dt; e.poisonT -= dt; if (e.poisonT <= 0) { e.poison--; e.poisonT = T.ST.poisonDecay; } if (rnd() < dt * 6) emit(PK.DOT, e.x + rr(-e.r, e.r), e.y, 0, -30, .6, 2, C_POISON, 1); }
+  if (e.poison > 0) { e.poisonAcc += e.poison * poisonDps() * dt; e.poisonT -= dt; if (e.poisonT <= 0 && !B.plaguebearer) { e.poison = max(0, e.poison - 1); e.poisonT = T.ST.poisonDecay; } if (rnd() < dt * 6) emit(PK.DOT, e.x + rr(-e.r, e.r), e.y, 0, -30, .6, 2, C_POISON, 1); }
   if (e.chill > 0) e.chill = max(0, e.chill - T.ST.chillDecay * dt);
   if (e.frozenT > 0) e.frozenT -= dt;
   if (e.stunT > 0) e.stunT -= dt;
@@ -256,7 +267,8 @@ function statusSpread() {
 }
 // apply bullet on-hit effects (elements, splitting, etc.)
 function applyOnHit(e, b) {
-  const p = G.player, run = G.run, sm = b.crit && B.critStatus ? 2 : 1;
+  // proc coefficient: per-hit effects are weighted so fast/multi-hit weapons proc at the same rate per second as slow ones
+  const p = G.player, run = G.run, pc = b.pc, sm = (b.crit && B.critStatus ? 2 : 1) * pc;
   let burn = b.burn + B.burnChance + (B.syn.wildfire && p.moveT > .5 ? .4 : 0); if (b.summon && B.syn.legion) burn = 1;
   if (burn > 0 && (b.summon && !B.droneElem && !B.syn.legion ? false : true) && rnd() < burn * sm) ignite(e, burnDps() * (b.burn >= 1 ? 1 : 1));
   if (b.summon && !B.droneElem) { if (B.syn.hive) addPoison(e, 3); return; }
@@ -265,10 +277,10 @@ function applyOnHit(e, b) {
   const pois = B.poison + b.poison + (B.syn.venomrounds && b.pierced > 0 ? 2 : 0) + (B.syn.plague && b.isFrag ? 2 : 0);
   if (pois > 0) addPoison(e, pois * sm);
   let shock = B.shockChance + b.shock; if (B.syn.thunderclap && b.crit) shock = 1;
-  if (run.char === 'volt' && ++p.voltCount >= 5) { p.voltCount = 0; shock = 1; }
+  if (run.char === 'volt' && (p.voltCount += pc) >= 5) { p.voltCount -= 5; shock = 1 / sm; }
   if (shock > 0 && rnd() < shock * sm) chainLightning(e, shockDmg() * (1 + B.dmg * .5), shockJumps(), b.x, b.y);
-  if (B.capacitor && ++p.hits % T.ST.capacitorN === 0) { let n = B.capacitor; forEnemiesNear(e.x, e.y, 220, o => { if (n-- > 0) { beamFx(e.x, e.y, o.x, o.y, '#c39bff', 2.5, .2, 16); hurtEnemy(o, 30, DMG.SHOCK); } }); A.play('zap', e.x, e.y); }
-  if (run.char === 'volt' && shock >= 1) e.stunT = max(e.stunT, .25);
+  if (B.capacitor && (p.capAcc = (p.capAcc || 0) + pc) >= T.ST.capacitorN) { p.capAcc -= T.ST.capacitorN; let n = B.capacitor; forEnemiesNear(e.x, e.y, 220, o => { if (n-- > 0) { beamFx(e.x, e.y, o.x, o.y, '#c39bff', 2.5, .2, 16); hurtEnemy(o, 30, DMG.SHOCK); } }); A.play('zap', e.x, e.y); }
+  if (run.char === 'volt' && shock * sm >= 1) e.stunT = max(e.stunT, .25);
 }
 // chain lightning from a source enemy
 let _chainId = 1;
@@ -277,7 +289,7 @@ function chainLightning(first, dmg, jumps, sx, sy) {
   A.play('zap', first.x, first.y, .8);
   while (cur && total < 40) {
     cur.chainId = id; beamFx(x, y, cur.x, cur.y, '#c9a8ff', 2.2, .16, 14); flashLight(cur.x, cur.y, 80, '#b98bff', .12, .8);
-    hurtEnemy(cur, dmg, DMG.SHOCK); if (B.syn.electrolysis) addPoison(cur, 3); if (B.syn.superconductor) addChill(cur, 25);
+    const sc = B.shockCrit && rollCrit(G.player); hurtEnemy(cur, dmg * (sc ? T.ST.critMul + B.critDmg : 1), DMG.SHOCK, sc); if (B.syn.electrolysis) addPoison(cur, 3); if (B.syn.superconductor) addChill(cur, 25);
     if (B.syn.overload) explode(cur.x, cur.y, 34, 20 * expMul(), 0, 'Overload', true);
     if (!(B.syn.superconductor && cur.frozenT > 0)) jumps--;
     if (jumps < 0) break;
@@ -292,12 +304,14 @@ function forEnemiesNear(x, y, r, fn) {
   for (let i = 0; i < n; i++) { const e = L[out[i]]; if (e && !e.dead && e.spawnT <= 0 && !e.burrowed && dist2(x, y, e.x, e.y) < r2 + e.r * e.r * 2) fn(e); }
 }
 function nearestEnemy(x, y, r, needLos = false) {
-  let best = null, bd = r * r; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed) continue; const d = dist2(x, y, e.x, e.y); if (d < bd && (!needLos || los(x, y, e.x, e.y))) { bd = d; best = e; } } return best;
+  let best = null, bd = r * r; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed || e.untouchable) continue; const d = dist2(x, y, e.x, e.y); if (d < bd && (!needLos || los(x, y, e.x, e.y))) { bd = d; best = e; } } return best;
 }
 
 // ---- explosions ---------------------------------------------------------------------------------------------
 // team: 0 player (hurts enemies), 1 enemy (hurts player), 2 both
+let _horizonN = 0;
 function explode(x, y, r, dmg, team, src, small = false) {
+  const hz = team === 0 && B && B.horizon; if (hz) { r *= 1.3; if (++_horizonN % 4 === 0 && !small) addZone('hole', x, y, 150, 1.6, 0); }
   const big = r > 70;
   A.play(big ? 'explode' : 'explodeS', x, y, small ? .6 : 1); if (big) A.duck(.45, .5);
   trauma(small ? .12 : big ? .5 : .3); if (big) hitstop(.035); flashLight(x, y, r * 3.2, '#ff9a4a', .22, 1.2); if (big) aberrate(T.fx.abberation);
@@ -305,7 +319,7 @@ function explode(x, y, r, dmg, team, src, small = false) {
   ring(x, y, r, C_FIRE2, .3, 5); emit(PK.GLOW, x, y, 0, 0, .2, r * 1.15, C_FIRE2, 0); decal('scorch', x, y, r * .9, null, .7);
   if (team !== 1) {
     forEnemiesNear(x, y, r, e => { const d = hypot(e.x - x, e.y - y), f = 1 - .5 * sat(d / r), a = atan2(e.y - y, e.x - x);
-      hurtEnemy(e, dmg * f, DMG.EXPL, false, cos(a) * 300, sin(a) * 300); if (B.expStun && team === 0) e.stunT = max(e.stunT, B.expStun); if (B.syn.avalanche) addChill(e, 60); });
+      hurtEnemy(e, dmg * f, DMG.EXPL, false, cos(a) * (hz ? -260 : 300), sin(a) * (hz ? -260 : 300)); if (B.expStun && team === 0) e.stunT = max(e.stunT, B.expStun); if (B.syn.avalanche) addChill(e, 60); });
     if (team === 0) {
       if (B.syn.napalm) addZone('fire', x, y, r * .7, 3, 18);
       if (B.syn.cluster && !small) for (let i = 0; i < 3; i++) { const b = fragBullet(x, y, rnd() * TAU, 0, 'Bomblet'); b.explode = 30; b.expDmg = 15 * expMul(); b.life = .25 + rnd() * .2; b.shape = 6; b.isFrag = true; b.split = 0; }
@@ -327,13 +341,13 @@ function nukeStrike() {
 // ---- fragments (split bullets) -------------------------------------------------------------------------------
 function fragBullet(x, y, ang, dmg, src) {
   const b = newBullet(0), s = 520 * (1 + B.pspd); b.x = b.px = x; b.y = b.py = y; b.vx = cos(ang) * s; b.vy = sin(ang) * s; b.r = 2.2; b.dmg = dmg; b.life = .35 * (1 + B.range); b.isFrag = true;
-  b.shape = 1; b.src = src; b.col = 0; return b;
+  b.shape = 1; b.src = src; b.col = 0; b.pc = .3; b.expChance = .3; return b;
 }
 function splitBullet(b, n, spreadAng) {
   if (b.isFrag && b.splitDepth <= 0) return;
   const a0 = atan2(b.vy, b.vx);
   for (let i = 0; i < n; i++) {
-    const a = spreadAng ? a0 + (i - (n - 1) / 2) * spreadAng : a0 + (rnd() - .5) * 2.2, f = fragBullet(b.x, b.y, a, b.dmg * .35, b.src);
+    const a = spreadAng ? a0 + (i - (n - 1) / 2) * spreadAng : a0 + (rnd() - .5) * 2.2, f = fragBullet(b.x, b.y, a, b.dmg * (.35 + B.fragDmg), b.src);
     f.burn = b.burn; f.col = b.col; f.splitDepth = b.isFrag ? b.splitDepth - 1 : B.splitDepth; f.isFrag = true; f.h0 = b.lastHit || 0; f.hn = 1;
     if (f.splitDepth > 0) f.split = B.split;
   }
@@ -365,10 +379,10 @@ function updatePlayerBullets(dt) {
       if (t === 2) damageCover(ty * room.w + tx, b.dmg);
       spray(b.x, b.y, atan2(-b.vy, -b.vx), 1.6, 4, b.crit ? C_GOLD : ci(bpal()[0]), 160, .18, 2);
       const totalB = b.bounce + B.bounce + (B.syn.pinballwiz ? 1 : 0) + (B.syn.kinetic ? 1 : 0);
-      if (B.splitWall && !b.isFrag) splitBullet(b, B.splitWall, .5);
+      if (B.splitWall && !b.isFrag && rnd() < b.pc) splitBullet(b, B.splitWall, .5);
       if (b.bounces < totalB && !b.ret) {
         const hx = tileSolidB(floor(nx / TS), floor(b.y / TS)), hy = tileSolidB(floor(b.x / TS), floor(ny / TS));
-        if (hx || (!hx && !hy)) b.vx = -b.vx; if (hy || (!hx && !hy)) b.vy = -b.vy; b.bounces++;
+        if (hx || (!hx && !hy)) b.vx = -b.vx; if (hy || (!hx && !hy)) b.vy = -b.vy; b.bounces++; b.pierce += B.bouncePierce;
         b.dmg *= 1 + B.bounceDmg + (B.syn.kinetic ? .25 : 0); if (B.syn.kinetic) { b.vx *= 1.25; b.vy *= 1.25; }
         if (B.bounceSeek || B.syn.pinballwiz) { const e = nearestEnemy(b.x, b.y, 500, true); if (e) { const s = hypot(b.vx, b.vy), a = atan2(e.y - b.y, e.x - b.x); b.vx = cos(a) * s; b.vy = sin(a) * s; } }
         if (B.bounceNova) { ring(b.x, b.y, 45, C_GOLD, .25, 2); forEnemiesNear(b.x, b.y, 45, e => hurtEnemy(e, B.bounceNova * (1 + B.dmg), DMG.EXPL)); }
@@ -376,7 +390,8 @@ function updatePlayerBullets(dt) {
         A.play('block', b.x, b.y, .25, 1.5); b.life = max(b.life, .25);
         continue;
       }
-      if (b.explode) explode(b.x, b.y, b.explode, b.expDmg, 0, b.src, b.isFrag);
+      if (b.explode && rnd() < b.expChance) explode(b.x, b.y, b.explode, b.expDmg, 0, b.src, b.isFrag);
+      if (B.mirrorCurse && !b.isFrag && !b.summon && rnd() < .25 * b.pc) { const a = atan2(p.y - b.y, p.x - b.x) + rr(-.25, .25); eShot(b.x, b.y, a, 230, 9, 4.5, 'Mirror Curse', 3); }
       if (b.ret) { b.age = b.ret + .01; b.vx *= -.5; b.vy *= -.5; continue; }
       freeBullet(list, i); continue;
     }
@@ -412,12 +427,13 @@ function bulletHitsEnemy(b, e) {
   if (e.frozenT > 0 && B.syn.glacier && b.pierced > 0) dmg *= 2;
   const a = atan2(b.vy, b.vx), kb = b.kb * (1 + B.kb) * (run.char === 'bastion' ? 1.4 : 1);
   hurtEnemy(e, dmg, b.summon ? DMG.SUMMON | DMG.BULLET : DMG.BULLET, crit, cos(a) * kb, sin(a) * kb);
+  onHitPower(e, b, dmg, crit);
   if (!b.summon) { if (crit) { A.play('crit', e.x, e.y, .8); hitstop(.022); spray(b.x, b.y, a, 1, 8, C_GOLD, 300, .25, 3); } else A.play('hit', e.x, e.y, .5); }
   spray(b.x, b.y, a + PI, 1.8, crit ? 6 : 3, ci(e.col), 200, .2, 2.5);
   applyOnHit(e, b);
-  if (B.syn.detonator && crit) explode(b.x, b.y, 45 * expRad(), b.dmg * .5 * expMul(), 0, 'Detonator', true);
-  if (B.split && !b.isFrag || (b.isFrag && b.splitDepth > 0)) splitBullet(b, B.split || 1, 0);
-  if (b.explode) { explode(b.x, b.y, b.explode * (b.homing && B.syn.smartbombs ? 1.5 : 1), b.expDmg, 0, b.src, b.isFrag); if (b.pierce <= 0) return true; }
+  if (B.syn.detonator && crit && rnd() < b.pc) explode(b.x, b.y, 45 * expRad(), b.dmg * .5 * expMul(), 0, 'Detonator', true);
+  if ((B.split && !b.isFrag && rnd() < b.pc) || (b.isFrag && b.splitDepth > 0)) splitBullet(b, B.split || 1, 0);
+  if (b.explode && rnd() < b.expChance) { explode(b.x, b.y, b.explode * (b.homing && B.syn.smartbombs ? 1.5 : 1), b.expDmg, 0, b.src, b.isFrag); if (b.pierce <= 0) return true; }
   if (b.ebounce < B.enemyBounce && !b.summon) { b.ebounce++; const t = nearestOther(b, e, 300); if (t) { const s = hypot(b.vx, b.vy), na = atan2(t.y - b.y, t.x - b.x); b.vx = cos(na) * s; b.vy = sin(na) * s; return false; } }
   if (b.pierce > 0) {
     b.pierce--; b.pierced++; b.dmg *= 1 + B.pierceDmg; if (B.syn.drill) b.critBonus += .25;
@@ -476,6 +492,7 @@ function graze(p, b) {
   const w = curWeapon(p); if (w.def.mag < 99) w.ammo = min(w.mag, w.ammo + ceil(w.mag * (run.char === 'kestrel' ? 1 : T.player.grazeAmmo))); if (w.reloadT > 0 && run.char === 'kestrel') w.reloadT = 0;
   p.abilityCd = max(0, p.abilityCd - T.CH[run.char].cd * T.player.grazeCharge);
   if (run.char === 'kestrel') p.buffs.dmg = 2.5;
+  if (B.shattered) { healPlayer(4, false); p.buffs.shat = 3; }
   if (B.adrenaline) { p.dashCharges = min(p.dashCharges + 1, 1 + (B.dashCharges | 0) + (run.char === 'wraith' ? 1 : 0)); p.buffs.adren = 3; }
 }
 
@@ -494,7 +511,7 @@ function updatePickups(dt) {
     k.x += k.vx * dt; k.y += k.vy * dt; collideTiles(k, 4);
     if (!p.dead && d < p.r + 8 && k.t > .2) {
       G.pickups.splice(i, 1);
-      if (k.kind === 'gold') { G.run.gold += k.v; G.run.stats.gold += k.v; A.play('coin', k.x, k.y, .5, 1 + min(.5, G.run.comboPitch = ((G.run.comboPitch || 0) + .02) % .5)); if (G.run.gold >= 400) unlockAch('rich'); }
+      if (k.kind === 'gold') { G.run.gold += k.v; G.run.stats.gold += k.v; if (B.goldHeal && (p.gAcc = (p.gAcc || 0) + k.v) >= 10) { p.gAcc -= 10; healPlayer(B.goldHeal, false, true); } A.play('coin', k.x, k.y, .5, 1 + min(.5, G.run.comboPitch = ((G.run.comboPitch || 0) + .02) % .5)); if (G.run.gold >= 400) unlockAch('rich'); }
       else if (k.kind === 'heal') { if (!(G.run.heat > 9)) { healPlayer(k.v); A.play('heal', k.x, k.y); } }
     }
   }
@@ -536,6 +553,7 @@ function updateZones(dt) {
       if (z.kind === 'fire') forEnemiesNear(z.x, z.y, z.r, e => { hurtEnemy(e, z.dps * .25, DMG.DOT); ignite(e, burnDps()); });
       else if (z.kind === 'acid' || z.kind === 'toxic') forEnemiesNear(z.x, z.y, z.r, e => addPoison(e, z.kind === 'acid' ? 1 : 1));
       else if (z.kind === 'tesla') { let n = 0; forEnemiesNear(z.x, z.y, z.r, e => { if (n++ < 8 && rnd() < .75) { beamFx(z.x + rr(-20, 20), z.y + rr(-20, 20), e.x, e.y, '#c9a8ff', 2, .12, 12); hurtEnemy(e, T.ab.tesla.dmg * .75 * (1 + B.dmg), DMG.SHOCK); e.stunT = max(e.stunT, .15); } }); if (n) A.play('zap', z.x, z.y, .5); }
+      else if (z.kind === 'sun') forEnemiesNear(z.x, z.y, z.r, e => { if (!e.boss) { const a = atan2(z.y - e.y, z.x - e.x); e.kbx += cos(a) * 90; e.kby += sin(a) * 90; } hurtEnemy(e, z.dps * .25 * (1 + B.dmg * .5), DMG.DOT); ignite(e, burnDps()); });
       else if (z.kind === 'hole') forEnemiesNear(z.x, z.y, z.r, e => { if (e.boss) return; const a = atan2(z.y - e.y, z.x - e.x); e.kbx += cos(a) * 140; e.kby += sin(a) * 140; hurtEnemy(e, 4, DMG.DOT); });
     } else if (!p.dead && dist2(z.x, z.y, p.x, p.y) < z.r * z.r) {
       if (z.kind === 'efire') hurtPlayer(z.dps, 'Fire'); else if (z.kind === 'eacid') hurtPlayer(z.dps, 'Acid'); else if (z.kind === 'eice') { p.vx *= .6; p.vy *= .6; }
@@ -552,7 +570,7 @@ function simTick(dt) {
   G.time += dt; G.tick++; const run = G.run, p = G.player;
   if (G.cam.focusT > 0) G.cam.focusT -= dt / max(.2, G.timeScale);
   run.stats.time += dt; if (run.comboT > 0 && (run.comboT -= dt) <= 0) run.combo = 0;
-  G.enemyTS = p.buffs && p.buffs.warp > 0 ? T.ACT.warp.scale : 1;
+  G.enemyTS = p.buffs.frac > 0 ? .03 : p.buffs.warp > 0 ? T.ACT.warp.scale : 1;
   if (p.buffs.warp > 0) p.buffs.warp -= dt;
   // intensity zoom: punch in slightly during peaks, bosses and kill streaks
   G.cam.zt = 1 + (G.boss ? .04 : 0) + (DIRECTOR.active && DIRECTOR.phase === 1 ? T.view.zoomIntense : 0) + min(.04, run.combo * .002) + (G.cam.focusT > 0 ? .08 : 0);
@@ -571,7 +589,7 @@ function simTick(dt) {
   ROOMS.update(dt);
   // sweep dead enemies
   const E = G.enemies; for (let i = E.length - 1; i >= 0; i--) if (E[i].dead) { EPOOL.push(E[i]); E[i] = E[E.length - 1]; E.pop(); }
-  G.alive = E.length;
+  let al = 0; for (const e of E) if (!e.untouchable) al++; G.alive = al;
   A.heartbeat(dt, p.dead ? 1 : p.hp / p.maxHp);
 }
 function hazardsOnEnemies(dt) {

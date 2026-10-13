@@ -22,6 +22,7 @@ function drawWorld(ctx, alpha, wdt) {
   // ground zones (non-emissive part)
   for (const z of G.zones) { if (!inView(z.x, z.y, z.r)) continue; const f = min(1, z.t / .4, (z.dur - z.t) / .2 + .2);
     if (z.kind === 'acid' || z.kind === 'toxic' || z.kind === 'eacid') { ctx.globalAlpha = .28 * f; ctx.fillStyle = '#5dff2a'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill(); }
+    else if (z.kind === 'sun') { ctx.globalAlpha = f; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(z.x, z.y, 18, 0, TAU); ctx.fill(); }
     else if (z.kind === 'hole') { ctx.globalAlpha = .85 * f; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(z.x, z.y, 26 + 6 * sin(G.rt * 20), 0, TAU); ctx.fill(); }
     else if (z.kind === 'eice') { ctx.globalAlpha = .25 * f; ctx.fillStyle = '#9fe4ff'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill(); } }
   ctx.globalAlpha = 1;
@@ -75,6 +76,7 @@ function drawEnemy(ctx, e, alpha) {
   const rot = ROT_FREE[e.type] ? (e.type === 'spire' ? e.a || 0 : 0) : e.ang;
   const wind = e.atkPhase === 1 ? 1 - e.atkT / e.atkDur : 0, fl = e.flash > 0;
   ctx.globalAlpha = e.alpha !== undefined ? e.alpha : 1; if (e.type === 'phantom') ctx.globalAlpha *= .75 + .25 * sin(t * 9);
+  if (B && B.darkness && G.player) ctx.globalAlpha *= clamp(1 - (hypot(x - G.player.x, y - G.player.y) - 230) / 120, .07, 1);
   xf(ctx, x, y + lift, rot, sx, sy); ctx.lineWidth = (2 + wind * 2) / e.r;
   ctx.fillStyle = fl ? '#ffffff' : e.frozenT > 0 ? '#5a8fb0' : wind > 0 ? mixHex(darkOf(e.col), e.col, wind * .5) : darkOf(e.col); ctx.fill(sh);
   ctx.strokeStyle = fl ? '#ffffff' : e.frozenT > 0 ? '#bdf0ff' : wind > .6 && (t * 20 % 1) < .5 ? '#ffffff' : e.col; ctx.stroke(sh);
@@ -143,6 +145,7 @@ function drawAlly(ctx, a, alpha) {
   else if (a.kind === 'sentry') { xf(ctx, x, y, 0, 9, 9); ctx.fillStyle = '#0d2a18'; ctx.fill(SH.hex); ctx.lineWidth = .2; ctx.strokeStyle = '#5dff8a'; ctx.stroke(SH.hex); xf(ctx, x, y, a.ang, 9, 9); ctx.fillStyle = '#5dff8a'; ctx.fillRect(.2, -.18, 1.1, .36); }
   else if (a.kind === 'orbital') { xf(ctx, x, y, G.rt * 8, 5, 5); ctx.fillStyle = '#5dff8a'; ctx.fill(SH.tri); }
   else if (a.kind === 'ghost') { const sh = SH[a.type] || SH.circ; xf(ctx, x, y, atan2(a.vy, a.vx), a.r, a.r); ctx.globalAlpha = .5 + .2 * sin(G.rt * 8); ctx.fillStyle = 'rgba(127,246,255,.25)'; ctx.fill(sh); ctx.lineWidth = 2 / a.r; ctx.strokeStyle = '#7ff6ff'; ctx.stroke(sh); ctx.globalAlpha = 1; }
+  else if (a.kind === 'clone') { const p = G.player; xf(ctx, x, y, a.ang, 13, 13); ctx.globalAlpha = .55 + .15 * sin(G.rt * 6); ctx.fillStyle = '#12051e'; ctx.fill(SH.player); ctx.lineWidth = .14; ctx.strokeStyle = '#b05cff'; ctx.stroke(SH.player); ctx.globalAlpha = 1; }
   else if (a.kind === 'decoy') { const p = G.player; xf(ctx, x, y, p.ang, 13, 13); ctx.globalAlpha = .45 + .3 * sin(G.rt * 15); ctx.lineWidth = .12; ctx.strokeStyle = p.color; ctx.stroke(SH.player); ctx.globalAlpha = 1; }
 }
 function drawPlayer(ctx, p, alpha) {
@@ -169,6 +172,8 @@ function drawEmissive(ctx, alpha) {
   for (const z of G.zones) { if (!inView(z.x, z.y, z.r)) continue; const f = min(1, z.t / .4);
     if (z.kind === 'fire' || z.kind === 'efire') { ctx.globalAlpha = .5 * f; ctx.drawImage(lightSprite('#ff6a1a'), z.x - z.r * 1.3, z.y - z.r * 1.3, z.r * 2.6, z.r * 2.6); if (rnd() < .2) emit(PK.DOT, z.x + rr(-z.r, z.r) * .7, z.y + rr(-z.r, z.r) * .7, 0, -60, .4, 2, C_FIRE, 1); }
     else if (z.kind === 'tesla') { ctx.globalAlpha = .7; ctx.strokeStyle = '#c39bff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.stroke(); ctx.globalAlpha = .15; ctx.fillStyle = '#b98bff'; ctx.fill(); }
+    else if (z.kind === 'sun') { const pu = 1 + .08 * sin(t * 12); ctx.globalAlpha = .9 * f; ctx.drawImage(lightSprite('#ffb020'), z.x - z.r * 1.4 * pu, z.y - z.r * 1.4 * pu, z.r * 2.8 * pu, z.r * 2.8 * pu);
+      ctx.drawImage(lightSprite('#fff27a'), z.x - 34, z.y - 34, 68, 68); ctx.strokeStyle = '#ffe23a'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = i / 10 * TAU + t; ctx.moveTo(z.x + cos(a) * 26, z.y + sin(a) * 26); ctx.lineTo(z.x + cos(a) * (40 + 8 * sin(t * 9 + i)), z.y + sin(a) * (40 + 8 * sin(t * 9 + i))); } ctx.stroke(); }
     else if (z.kind === 'hole') { ctx.globalAlpha = .8; ctx.strokeStyle = '#b98bff'; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(z.x, z.y, 30 + ((t * 80 + i * 40) % 140), 0, TAU); ctx.stroke(); } } }
   ctx.globalAlpha = 1;
   // enemy windup glows, warden auras, healer beams, sniper laser sights
@@ -179,6 +184,7 @@ function drawEmissive(ctx, alpha) {
     if (e.type === 'mender' && e.healTarget && !e.healTarget.dead) { const h = e.healTarget; ctx.globalAlpha = .6 + .3 * sin(t * 20); ctx.strokeStyle = '#3dffa8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(h.x, h.y); ctx.stroke(); }
     if (e.type === 'lancer' && e.atkPhase === 1 && e.sight > 0) { const a = e.aim, L = raycast(x, y, cos(a), sin(a), 1200, 0), f = e.sight;
       ctx.globalAlpha = .25 + f * .7; ctx.strokeStyle = f > .72 ? '#ffffff' : '#ff3df0'; ctx.lineWidth = .8 + f * 1.6; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + cos(a) * L, y + sin(a) * L); ctx.stroke(); }
+    if (e === G.markE) { ctx.globalAlpha = .9; ctx.strokeStyle = '#ffef7a'; ctx.lineWidth = 1.5; const r = e.r + 7, s = G.rt * 2; for (let k = 0; k < 4; k++) { const a = s + k * PI / 2; ctx.beginPath(); ctx.arc(x, y, r, a, a + .7); ctx.stroke(); } }
     if (e.boss) { ctx.globalAlpha = .4; const r = e.r * 3; ctx.drawImage(lightSprite(e.col), x - r, y - r, r * 2, r * 2); }
   }
   ctx.globalAlpha = 1;
@@ -249,7 +255,7 @@ function drawEnemyBullets(ctx, alpha) {
 }
 function queueLights(alpha) {
   const p = G.player;
-  if (p && !p.dead) light(p.x, p.y, 300, '#ffffff', .85);
+  if (p && !p.dead) light(p.x, p.y, B && B.darkness ? 170 : 300, '#ffffff', .85);
   let n = 0; for (const b of G.bullets) { if (n++ > 70) break; light(b.x, b.y, b.shape === 4 ? 60 : 40, b.shape === 4 ? '#ff8a2b' : bpal()[0], .5); }
   n = 0; for (let i = 0; i < G.ebullets.length; i += 2) { if (n++ > 90) break; const b = G.ebullets[i]; light(b.x, b.y, 38, bpal()[b.shape === 3 ? 3 : 2], .55); }
   for (const e of G.enemies) { if (e.dead) continue; if (e.atkPhase === 1) light(e.x, e.y, 90, e.col, .8); else if (e.elite || e.boss) light(e.x, e.y, e.boss ? 260 : 70, e.col, .6); }

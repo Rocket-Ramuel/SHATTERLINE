@@ -51,12 +51,12 @@ function enterNode(node) {
   G.grid.reset(room.w * TS, room.h * TS); PATH.init(room); TAC.reset();
   p.x = p.px = room.entry.x; p.y = p.py = room.entry.y; p.vx = p.vy = 0; p.dashT = 0; p.phoenixUsed = false; p.ghosts.length = 0;
   G.cam.x = p.x; G.cam.y = p.y - 100; G.cam.zt = 1; G.allies.forEach(a => { a.x = a.px = p.x; a.y = a.py = p.y; });
-  run.roomHit = false; run.roomT = 0; G.state = 'play'; G.paused = false; document.body.classList.add('play'); IN.clearHits();
+  run.roomHit = false; run.roomDmg = 0; run.roomT = 0; G.state = 'play'; G.paused = false; document.body.classList.add('play'); IN.clearHits();
   for (const b of room.barrels) addProp('barrel', b.x, b.y);
   MUS.setTheme(run.biome, node.type === 'boss'); A.play('door', p.x, p.y, .8, .8); screenFlash(.15);
   const type = node.type;
-  if (type === 'combat' || type === 'elite' || type === 'challenge') { DIRECTOR.start(room); if (type === 'elite') toast('ELITE ROOM', 'Stronger foes, richer rewards'); if (B.sentry) addAlly('sentry', p.x + 30, p.y - 40, 1e9); }
-  else if (type === 'boss') { DIRECTOR.active = false; BOSS.spawn(T.BIO[run.biome].boss); }
+  if (type === 'combat' || type === 'elite' || type === 'challenge') { DIRECTOR.start(room); if (type === 'elite') toast('ELITE ROOM', 'Stronger foes, richer rewards'); if (B.sentry) addAlly('sentry', p.x + 30, p.y - 40, 1e9); if (B.hunted) addTimer(2, spawnStalker); run.doomT = 45; }
+  else if (type === 'boss') { DIRECTOR.active = false; BOSS.spawn(T.BIO[run.biome].boss); if (B.hunted) addTimer(4, spawnStalker); }
   else { DIRECTOR.active = false; room.cleared = true; room.open = true; setupSpecialRoom(room, node); MUS.setIntensity(.5); }
 }
 const ROOMS = {
@@ -73,15 +73,18 @@ const ROOMS = {
 function roomCleared() {
   const room = G.room, run = G.run, p = G.player; room.cleared = true; run.stats.rooms++;
   A.play('clear'); MUS.stinger('clear'); MUS.setIntensity(.5); A.play('door', p.x, p.y);
-  const D = T.director; run.perf = clamp(run.perf + (run.roomHit ? -.04 : .06), .85, 1.2);
+  // adaptive threat: fast, clean clears raise enemy HP/budget for the next rooms; struggling lowers it
+  const S = T.scale, rate = DIRECTOR.spent / max(6, run.roomT), heavy = (run.roomDmg || 0) > p.maxHp * S.heavyHit;
+  if (room.type !== 'challenge') run.perf = clamp(run.perf + (rate > S.fastRate ? S.perfUp : rate < S.slowRate ? -S.perfDown : .02) + (heavy ? -S.perfDown : 0) + (run.roomHit ? 0 : .02), S.perfMin, S.perfMax);
   if (room.type === 'elite' && !run.roomHit) unlockAch('untouch');
   if (B.secondWind && p.hp < p.maxHp * .4) healPlayer(p.maxHp * B.secondWind);
+  healPlayer(p.maxHp * T.ST.roomHeal); for (const e of G.enemies) if (e.untouchable) { e.dead = true; burst(e.x, e.y, 30, ci(e.col), 300, .6, 4, PK.SHARD); }
   dropGold(p.x, p.y - 40, T.gold.room * (room.type === 'elite' ? 1.8 : 1) * (1 + B.gold));
   if (run.biome === 3 && !run.reachedCore) { run.reachedCore = true; }
   const open = () => { room.open = true; wtext(p.x, p.y - 30, 'EXIT OPEN', '#50ffaa', 12, 1.2, -20); };
   const chaos = () => { if (B.chaos) { const u = rollOffers(1, 0, run.rng)[0]; if (u) { pickUpgrade(u.id); toast('UNSTABLE RIFT', u.n); } } };
   if (room.type === 'boss') {
-    addTimer(.6, () => rewardScreen({ title: 'Boss Defeated', sub: 'Choose a powerful upgrade', minRar: 2, extra: 1, tag: 'boss', then: () => {
+    addTimer(.6, () => rewardScreen({ title: 'Boss Defeated', sub: 'A legendary power awaits', minRar: 2, extra: 1, tag: 'boss', legendary: true, then: () => {
       const c = arenaC(); const last = run.biome >= 3;
       addProp('portal', c.x, c.y, { r: 30, interact: () => last ? endRun(true) : nextBiome(), label: last ? 'ASCEND' : 'NEXT SECTOR', sub: last ? 'Finish the run' : T.BIO[run.biome + 1].n });
       healPlayer(p.maxHp * .25, true); open(); } }));
@@ -118,7 +121,7 @@ function setupSpecialRoom(room, node) {
   const run = G.run, c = { x: room.w * TS / 2, y: room.h * TS / 2 }, rng = new RNG(room.seed + ':special');
   if (node.type === 'shop') {
     toast('SHOP', 'Walk up to an item and press ' + bindLabel(IN.binds.interact[0]));
-    const offers = rollOffers(3, 0, rng), items = offers.map(u => ({ kind: 'upg', u, price: T.price.rar[u.rar] }));
+    const offers = rollOffers(3, 0, rng, min(3, T.rarCap[run.biome] + 1)), items = offers.map(u => ({ kind: 'upg', u, price: T.price.rar[u.rar] }));
     const wpool = Object.keys(T.W).filter(id => weaponUnlocked(id) && !run.weapons.some(w => w.id === id)); if (wpool.length) items.push({ kind: 'weapon', id: rng.pick(wpool), price: T.price.weapon });
     items.push({ kind: 'active', id: rng.pick(Object.keys(T.ACT)), price: T.price.active }, { kind: 'heal', price: T.price.heal }, { kind: 'reroll', price: T.price.reroll });
     items.forEach((it, i) => { const k = items.length, x = c.x + (i - (k - 1) / 2) * 70, y = c.y - 10 + (i % 2) * 30;
@@ -136,7 +139,9 @@ function setupSpecialRoom(room, node) {
   }
 }
 function buyItem(pr) {
-  const run = G.run, it = pr.it; if (pr.sold) return; if (run.gold < it.price) { A.play('deny'); wtext(pr.x, pr.y - 30, 'NOT ENOUGH ◆', '#ff5470', 9); return; }
+  const run = G.run, it = pr.it; if (pr.sold) return;
+  if (B.toll) { const p = G.player, c = round(p.maxHp * .15); if (p.hp <= c) { A.play('deny'); wtext(pr.x, pr.y - 30, 'TOO WEAK TO PAY', '#ff5470', 9); return; } p.hp -= c; p.flash = .15; wtext(p.x, p.y - 20, 'TOLL -' + c, '#ff3355', 11); it.price = 0; }
+  if (run.gold < it.price) { A.play('deny'); wtext(pr.x, pr.y - 30, 'NOT ENOUGH ◆', '#ff5470', 9); return; }
   run.gold -= it.price; pr.sold = true; pr.label = 'SOLD'; pr.sub = ''; A.play('buy'); UI.hint('');
   if (it.kind === 'upg') pickUpgrade(it.u.id); else if (it.kind === 'weapon') offerWeapon(it.id); else if (it.kind === 'active') offerActive(it.id);
   else if (it.kind === 'heal') { healPlayer(30, true); A.play('heal'); } else run.rerolls++;
@@ -154,6 +159,7 @@ function restChoice(pr) {
     [`Rest — heal ${round(p.maxHp * heal)} HP`, () => { pr.used = true; healPlayer(p.maxHp * heal, true); A.play('heal'); }, 'pri'],
     [`Train — +${T.rest.maxHp} max HP`, () => { pr.used = true; B.maxHp += T.rest.maxHp; recalcPlayer(); A.play('pick'); }],
     ['Meditate — choose an upgrade', () => { pr.used = true; rewardScreen({ title: 'Meditation', tag: 'rest' }); }],
+    ...(G.run.upgrades.some(id => UPG[id].rar === 4) ? [['Cleanse — break your newest pact', () => { pr.used = true; const id = [...G.run.upgrades].reverse().find(i => UPG[i].rar === 4); removeUpgrade(id); toast('PACT BROKEN', UPG[id].n); A.play('heal'); }]] : []),
   ]);
 }
 const EVENTS = [
@@ -172,7 +178,7 @@ function runEvent(rng) { const ev = rng.pick(EVENTS); choiceDialog(ev.t, ev.d, e
 const BOT = { mx: 0, my: 0, fire: false, dash: false, ability: false, ax: 0, ay: 0, t: 0, path: null, stuck: 0 };
 function botThink(dt) {
   const p = G.player, room = G.room; if (!p || p.dead) return; BOT.t -= dt;
-  let tgt = null, bd = 1e9; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed) continue; const d = dist2(p.x, p.y, e.x, e.y) * (e.los ? 1 : 3); if (d < bd) { bd = d; tgt = e; } }
+  let tgt = null, bd = 1e9; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed || e.untouchable) continue; const d = dist2(p.x, p.y, e.x, e.y) * (e.los ? 1 : 3); if (d < bd) { bd = d; tgt = e; } }
   let mx = 0, my = 0;
   // dodge: repel from incoming bullets
   let danger = 0; for (const b of G.ebullets) { const dx = p.x - b.x, dy = p.y - b.y, d2 = dx * dx + dy * dy; if (d2 > 140 * 140) continue; const d = sqrt(d2), app = -(dx * b.vx + dy * b.vy) / (d * hypot(b.vx, b.vy) + 1e-3);

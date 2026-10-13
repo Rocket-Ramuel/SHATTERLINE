@@ -5,12 +5,16 @@ const SHAPE = { bolt: 0, pellet: 1, rocket: 2, disc: 3, flame: 4, arrow: 5, mine
 const ELEM_IDX = () => B.burnChance >= .5 ? 2 : B.chill >= 25 ? 3 : B.shockChance >= .3 ? 4 : B.poison >= 2 ? 5 : 0;
 function makeWeapon(id) { const def = T.W[id]; return { id, def, ammo: def.mag, mag: def.mag, reloadT: 0, cd: 0, spin: 0, heat: 0, charge: 0, full: false, beam: null, tick: 0, ramp: 0 }; }
 const curWeapon = p => G.run.weapons[G.run.wi];
+// proc coefficient per projectile/hit, normalised so every weapon procs ≈6 "standard shots" per second (sidearm = 1)
+const wPc = d => d.pc || clamp(6 / (d.rate * (d.cnt || 1)), .15, 1.5);
+const shotPc = d => d.pc ? d.pc * (d.cnt || 1) : 6 / d.rate;
 function refreshWeapons() { for (const w of G.run.weapons) { const m = w.def.k === 'orbit' ? w.def.mag : max(1, round(w.def.mag * (1 + B.mag))); if (m !== w.mag) { w.ammo = min(m, w.ammo + max(0, m - w.mag)); w.mag = m; } } }
 function swapWeapon(p) { const run = G.run; A.loop('beam', false); A.loop('flame', false); A.loop('spin', false); A.loop('draw', false); run.wi = (run.wi + 1) % run.weapons.length; const w = curWeapon(p); w.cd = max(w.cd, T.player.swapTime); A.play('reload', p.x, p.y, .6, 1.3); wtext(p.x, p.y - 22, w.def.n, '#7ff6ff', 9, .8, -30); }
 function dmgMul(p) {
-  let m = (1 + B.dmg) * (1 + B.momentum * p.moveT); if (B.berserk) m *= 1 + (1 - p.hp / p.maxHp); if (p.buffs.dmg > 0) m *= 1.3; return m;
+  let m = (1 + B.dmg) * (1 + B.momentum * p.moveT) * G.cloneMul; if (B.berserk) m *= 1 + (1 - p.hp / p.maxHp); if (p.buffs.dmg > 0) m *= 1.3; if (p.buffs.shat > 0) m *= 1.4;
+  if (B.midas && G.run) m *= 1 + min(.8, G.run.gold / 1000); return m;
 }
-function rateMul(p) { return max(.2, 1 + B.rate + p.cascade * .12 + (p.buffs.adren > 0 ? .3 : 0) + (p.buffs.overdrive > 0 ? .6 : 0)); }
+function rateMul(p) { return max(.2, 1 + B.rate + (B.adrenal && p.hp < p.maxHp * .5 ? .25 : 0) + p.cascade * .12 + (p.buffs.adren > 0 ? .3 : 0) + (p.buffs.overdrive > 0 ? .6 : 0)); }
 function rollCrit(p) {
   if (p.autoCrit > 0) { p.autoCrit--; return true; } if (p.reloadCrits > 0) { p.reloadCrits--; return true; }
   return rnd() < T.ST.critBase + B.crit + (G.run.char === 'wraith' ? .15 : 0);
@@ -18,9 +22,10 @@ function rollCrit(p) {
 function startReload(w, p) { if (w.reloadT > 0 || w.ammo >= w.mag || w.def.k === 'orbit' || w.def.k === 'bow') return; w.reloadT = w.def.rel; A.play('reload', p.x, p.y, .7); if (B.reloadHurt) { p.hp = max(1, p.hp - B.reloadHurt); wtext(p.x, p.y - 16, '-' + B.reloadHurt, '#ff5470', 8); } }
 const _tmpB = new Bullet();
 function updateWeapons(p, dt) {
-  const w = curWeapon(p), d = w.def, run = G.run, held = (IN.down.fire || (G.bot && BOT.fire)) && !p.dead && G.cam.focusT <= 0;
+  const w = curWeapon(p), d = w.def, run = G.run; let held = (IN.down.fire || (G.bot && BOT.fire) || (B.frenzy && !G.room.cleared)) && !p.dead && G.cam.focusT <= 0;
+  if (B.frenzy && d.k === 'bow' && w.charge >= 1) held = false;
   w.cd -= dt;
-  if (w.reloadT > 0) { w.reloadT -= dt * (1 + B.reload); if (w.reloadT <= 0) { w.reloadT = 0; w.ammo = w.mag; A.play('reloaded', p.x, p.y, .7); if (B.reloadCrit) p.reloadCrits = B.reloadCrit; } }
+  if (w.reloadT > 0) { w.reloadT -= dt * (1 + B.reload); if (w.reloadT <= 0) { w.reloadT = 0; w.ammo = w.mag; A.play('reloaded', p.x, p.y, .7); if (B.reloadCrit) p.reloadCrits = B.reloadCrit; onReloadPower(p, w); } }
   if (IN.take('reload')) startReload(w, p);
   const od = p.buffs.overdrive > 0;
   // loops reset
@@ -47,6 +52,7 @@ function updateWeapons(p, dt) {
     if (w.ammo <= 0) { if (d.k === 'orbit') { w.cd = .2; } else { startReload(w, p); if (w.reloadT <= 0) A.play('empty', p.x, p.y); w.cd = .25; } if (w.reloadT <= 0 && (p.emptyT || 0) < G.time) { p.emptyT = G.time + 1; wtext(p.x, p.y - 20, 'EMPTY', '#ff8a2b', 9, .6); } }
     else {
       if (d.k === 'rail') fireRail(p, w); else if (d.k === 'arc') fireArc(p, w); else if (d.k === 'orbit') fireBlade(p, w); else fireGun(p, w);
+      if (B.clone) cloneFire(p, w);
       if (!od || d.k === 'orbit') w.ammo--;
       w.cd = max(w.cd + 1 / rate, -dt);
       if (w.ammo <= 0 && d.k !== 'orbit') startReload(w, p);
@@ -58,6 +64,8 @@ function updateWeapons(p, dt) {
 }
 function muzzle(p, d, k = 1) {
   const a = p.ang, mx = p.x + cos(a) * 16, my = p.y + sin(a) * 16;
+  if (G.cloning) { spray(mx, my, a, .6, 2, ci('#b05cff'), 260, .08, 2.5); return [mx, my]; }
+  if (B.recoilCurse) { const im = 150 * shotPc(d) * k; p.vx -= cos(a) * im; p.vy -= sin(a) * im; }
   p.recX -= cos(a) * d.rec * k; p.recY -= sin(a) * d.rec * k; p.muzzle = .05; p.squash = max(p.squash, .1 * k);
   trauma(d.shk * k * .6); G.cam.x -= cos(a) * d.rec * .3; G.cam.y -= sin(a) * d.rec * .3;
   flashLight(mx, my, 90 + d.rec * 8, '#ffe8a0', .06, .9);
@@ -74,10 +82,10 @@ function bulletFrom(p, w, ang, spdK = 1) {
   b.crit = rollCrit(p); b.dmg = d.dmg * dmgMul(p); b.pierce = (d.pierce || 0) + B.pierce; b.homing = B.homing + (b.crit && B.syn.bloodhound ? 6 : 0); if (b.crit && B.syn.bloodhound) b.pierce++;
   if (d.exp) { b.explode = d.exp * expRad(); b.expDmg = d.expD * dmgMul(p) * expMul(); } else if (B.explode) { b.explode = T.ST.explodeR * expRad(); b.expDmg = b.dmg * T.ST.explodeDmg * expMul(); }
   b.burn = d.burn || 0; b.kb = d.kb; b.src = d.n; b.shape = SHAPE[d.sh] || 0; b.col = b.crit ? 1 : ELEM_IDX(); b.drag = d.drag || 0; b.acc = d.acc || 0; b.maxSpd = d.maxSpd || 0; b.ret = d.ret || 0; b.mine = d.mine ? 1 : 0;
-  b.split = B.split; b.splitDepth = B.splitDepth; return b;
+  b.split = B.split; b.splitDepth = B.splitDepth; b.pc = wPc(d); b.expChance = d.exp ? 1 : b.pc; return b;
 }
 function fireGun(p, w) {
-  const d = w.def, n = d.cnt + B.extraProj, spr = d.spr * max(.15, 1 - B.spread);
+  const d = w.def, n = d.cnt + B.extraProj + (p.hydra || 0), spr = d.spr * max(.15, 1 - B.spread);
   for (let i = 0; i < n; i++) {
     let a = p.ang + (rnd() - .5) * spr;
     if (d.cnt === 1 && n > 1) a = p.ang + (i - (n - 1) / 2) * .12 + (rnd() - .5) * spr;
@@ -87,13 +95,13 @@ function fireGun(p, w) {
   muzzle(p, d);
 }
 function afterShot(p, w) {
-  p.shots++; const run = G.run;
-  if (B.missile) { const every = max(3, 9 - B.missile * 2); if (p.shots % every === 0) fireMissiles(p, 1 + B.missileCount); }
-  if (B.ballLight && p.shots % 8 === 0) { const b = newBullet(0); b.x = b.px = p.x; b.y = b.py = p.y; b.vx = cos(p.ang) * 150; b.vy = sin(p.ang) * 150; b.life = 2.6; b.r = 7; b.dmg = 15 * dmgMul(p); b.pierce = 99; b.lightning = 1; b.shape = SHAPE.orb; b.col = 4; b.src = 'Ball Lightning'; A.play('zap', p.x, p.y, .5, .7); }
+  p.shots++; const run = G.run, k = shotPc(w.def);
+  if (B.missile) { const every = T.ST.missileEvery / (1 + (B.missile - 1) * .35); if ((p.missAcc = (p.missAcc || 0) + k) >= every) { p.missAcc -= every; fireMissiles(p, 1 + B.missileCount); } }
+  if (B.ballLight && (p.ballAcc = (p.ballAcc || 0) + k) >= 8) { p.ballAcc -= 8; const b = newBullet(0); b.x = b.px = p.x; b.y = b.py = p.y; b.vx = cos(p.ang) * 150; b.vy = sin(p.ang) * 150; b.life = 2.6; b.r = 7; b.dmg = 15 * dmgMul(p); b.pierce = 99; b.lightning = 1; b.shape = SHAPE.orb; b.col = 4; b.src = 'Ball Lightning'; A.play('zap', p.x, p.y, .5, .7); }
 }
 function fireMissiles(p, n) {
   for (let i = 0; i < n; i++) { const b = newBullet(0), a = p.ang + (i - (n - 1) / 2) * .5 + PI * (n > 1 ? 0 : 0) + rr(-.2, .2), s = 260; b.x = b.px = p.x; b.y = b.py = p.y; b.vx = cos(a) * s; b.vy = sin(a) * s; b.life = 2; b.r = 4;
-    b.dmg = 12 * dmgMul(p); b.homing = 7; b.acc = 900; b.maxSpd = 700; b.explode = 50 * expRad() * (B.syn.smartbombs ? 1.2 : 1); b.expDmg = T.ST.missileDmg * dmgMul(p) * expMul() * (B.syn.smartbombs ? 2 : 1); b.shape = SHAPE.rocket; b.src = 'Missile'; b.missile = true; b.seek = true; }
+    b.dmg = 12 * dmgMul(p); b.homing = 7; b.acc = 900; b.maxSpd = 700; b.explode = 50 * expRad() * (B.syn.smartbombs ? 1.2 : 1); b.expDmg = T.ST.missileDmg * dmgMul(p) * expMul() * (B.syn.smartbombs ? 2 : 1); b.shape = SHAPE.rocket; b.src = 'Missile'; b.missile = true; b.seek = true; b.pc = .5; }
   A.play('rocket', p.x, p.y, .4, 1.3);
 }
 function fireRail(p, w) {
@@ -101,7 +109,7 @@ function fireRail(p, w) {
   const hits = []; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed) continue; const rx = e.x - sx, ry = e.y - sy, al = rx * cx + ry * cy; if (al < 0 || al > wall + e.r) continue; if (abs(rx * cy - ry * cx) < e.r + 5 * (1 + B.size)) hits.push([al, e]); }
   hits.sort((x, y) => x[0] - y[0]);
   const crit = rollCrit(p); let dmg = d.dmg * dmgMul(p) * (crit ? T.ST.critMul + B.critDmg : 1);
-  _tmpB.reset(); _tmpB.crit = crit; _tmpB.x = sx; _tmpB.y = sy; _tmpB.src = 'Railgun';
+  _tmpB.reset(); _tmpB.crit = crit; _tmpB.x = sx; _tmpB.y = sy; _tmpB.src = 'Railgun'; _tmpB.pc = wPc(d);
   for (const [al, e] of hits) { const ex = sx + cx * al, ey = sy + cy * al; _tmpB.x = ex; _tmpB.y = ey; hurtEnemy(e, dmg, DMG.BULLET, crit, cx * d.kb, cy * d.kb); applyOnHit(e, _tmpB); spray(ex, ey, a, .8, 8, ci(e.col), 400, .3, 3); _tmpB.pierced++; dmg *= 1 + B.pierceDmg;
     if (B.syn.detonator && crit) explode(ex, ey, 45, dmg * .5, 0, 'Detonator', true); if (B.explode) explode(ex, ey, T.ST.explodeR * expRad(), dmg * T.ST.explodeDmg * expMul(), 0, 'Rail', true); }
   const ex = sx + cx * wall, ey = sy + cy * wall; if (_rayTile >= 0 && G.room.tiles[_rayTile] === 2) damageCover(_rayTile, dmg);
@@ -116,7 +124,7 @@ function fireArc(p, w) {
   let best = null, bs = 1e9; for (const e of G.enemies) { if (e.dead || e.spawnT > 0 || e.burrowed) continue; const dx = e.x - p.x, dy = e.y - p.y, dd = hypot(dx, dy); if (dd > d.range * (1 + B.range * .5)) continue;
     const da = abs(angDiff(p.ang, atan2(dy, dx))); if (da > d.cone) continue; const s = dd + da * 200; if (s < bs && los(p.x, p.y, e.x, e.y)) { bs = s; best = e; } }
   const mx = p.x + cos(p.ang) * 14, my = p.y + sin(p.ang) * 14;
-  if (best) { _tmpB.reset(); _tmpB.crit = crit; _tmpB.x = best.x; _tmpB.y = best.y; _tmpB.src = d.n;
+  if (best) { _tmpB.reset(); _tmpB.crit = crit; _tmpB.x = best.x; _tmpB.y = best.y; _tmpB.src = d.n; _tmpB.pc = wPc(d);
     const id = ++_chainId; let cur = best, x = mx, y = my, dm = dmg, jumps = d.chain + B.shockAdd + (B.pierce > 0 ? 1 : 0);
     while (cur) { cur.chainId = id; beamFx(x, y, cur.x, cur.y, crit ? '#fff27a' : '#c9a8ff', 2.6, .14, 16); hurtEnemy(cur, dm, DMG.SHOCK | DMG.BULLET, crit, (cur.x - x) * .5, (cur.y - y) * .5); applyOnHit(cur, _tmpB);
       if (B.syn.superconductor) addChill(cur, 25); if (B.syn.overload) explode(cur.x, cur.y, 34, 20 * expMul(), 0, 'Overload', true);
@@ -136,21 +144,27 @@ function fireBeam(p, w, dt) {
   flashLight(w.beam.x2, w.beam.y2, 60 + w.ramp * 40, bpal()[0], .05, .8);
   w.tick -= dt; if (w.tick > 0) return; w.tick += 1 / (d.rate * rateMul(p));
   const crit = rollCrit(p), dmg = d.dmg * dmgMul(p) * (1 + w.ramp * d.rampMul) * (crit ? T.ST.critMul + B.critDmg : 1);
-  _tmpB.reset(); _tmpB.crit = crit; _tmpB.src = d.n;
-  for (let i = 0; i < min(maxHits, hits.length); i++) { const e = hits[i][1]; hurtEnemy(e, dmg, DMG.BULLET, crit, cx * d.kb, cy * d.kb); _tmpB.x = e.x; _tmpB.y = e.y; if (rnd() < .3) applyOnHit(e, _tmpB); spray(e.x, e.y, a + PI, 1.2, 2, ci(e.col), 200, .2, 2); }
+  _tmpB.reset(); _tmpB.crit = crit; _tmpB.src = d.n; _tmpB.pc = wPc(d);
+  for (let i = 0; i < min(maxHits, hits.length); i++) { const e = hits[i][1]; hurtEnemy(e, dmg, DMG.BULLET, crit, cx * d.kb, cy * d.kb); _tmpB.x = e.x; _tmpB.y = e.y; applyOnHit(e, _tmpB); spray(e.x, e.y, a + PI, 1.2, 2, ci(e.col), 200, .2, 2); }
   if (end === wall && _rayTile >= 0 && G.room.tiles[_rayTile] === 2) damageCover(_rayTile, dmg * .5);
   spray(w.beam.x2, w.beam.y2, a + PI, 1.6, 2, ci(bpal()[0]), 220, .2, 2);
+}
+// Mirror Self: the clone repeats the shot from its own position at reduced damage
+function cloneFire(p, w) {
+  const c = G.allies.find(a => a.kind === 'clone'); if (!c) return; const sx = p.x, sy = p.y, sa = p.ang, d = w.def; G.cloning = true; G.cloneMul = .6;
+  p.x = c.x; p.y = c.y; p.ang = atan2(IN.wy - c.y, IN.wx - c.x); const savedAmmo = w.ammo;
+  try { if (d.k === 'rail') fireRail(p, w); else if (d.k === 'arc') fireArc(p, w); else if (d.k !== 'orbit') fireGun(p, w); } finally { p.x = sx; p.y = sy; p.ang = sa; w.ammo = savedAmmo; G.cloning = false; G.cloneMul = 1; }
 }
 function fireBow(p, w) {
   const d = w.def, pw = max(.15, w.charge), full = w.charge >= .98, b = bulletFrom(p, w, p.ang + (rnd() - .5) * .02 * (1 - pw), lerp(d.spd, d.spdMax, pw) / d.spd);
   b.dmg = lerp(d.dmg, d.dmgMax, pw * pw) * dmgMul(p); b.kb = d.kb * pw; if (full) { b.crit = true; b.col = 1; b.pierce += 3; b.r *= 1.3; } b.life *= .6 + pw * .6;
-  muzzle(p, d, .4 + pw * .8); A.play('bow', p.x, p.y, .8, .8 + pw * .4); p.shots++; afterShot(p, w);
+  muzzle(p, d, .4 + pw * .8); A.play('bow', p.x, p.y, .8, .8 + pw * .4); p.shots++; afterShot(p, w); if (B.clone && !G.cloning) { G.cloning = true; G.cloneMul = .6; const c = G.allies.find(a => a.kind === 'clone'); if (c) { const sx = p.x, sy = p.y; p.x = c.x; p.y = c.y; const bb = bulletFrom(p, w, atan2(IN.wy - c.y, IN.wx - c.x)); bb.dmg = b.dmg * .6; p.x = sx; p.y = sy; } G.cloning = false; G.cloneMul = 1; }
 }
 // orbiting blades shred anything they touch (per-enemy cooldown)
 function orbitBlades(p, w) {
   const d = w.def; for (let i = 0; i < w.ammo; i++) { const a = G.time * d.orbitSpd + i / max(1, w.mag) * TAU, bx = p.x + cos(a) * d.orbitR, by = p.y + sin(a) * d.orbitR;
     forEnemiesNear(bx, by, 10, e => { if ((e.orbT || 0) > G.time) return; e.orbT = G.time + .22; const c = rollCrit(p); hurtEnemy(e, d.orbitDmg * dmgMul(p) * (c ? T.ST.critMul + B.critDmg : 1), DMG.MELEE, c, cos(a + PI / 2) * 160, sin(a + PI / 2) * 160);
-      _tmpB.reset(); _tmpB.crit = c; _tmpB.x = bx; _tmpB.y = by; applyOnHit(e, _tmpB); spray(bx, by, a + PI / 2, 1, 5, ci(e.col), 220, .2, 2.5); A.play('blade', bx, by, .35, 1.4); }); }
+      _tmpB.reset(); _tmpB.crit = c; _tmpB.x = bx; _tmpB.y = by; _tmpB.pc = .5; applyOnHit(e, _tmpB); spray(bx, by, a + PI / 2, 1, 5, ci(e.col), 220, .2, 2.5); A.play('blade', bx, by, .35, 1.4); }); }
 }
 function fireBlade(p, w) {
   const d = w.def, b = bulletFrom(p, w, p.ang); b.w = w; b.pierce = 99; b.ret = d.ret; b.dmg = d.dmg * dmgMul(p); muzzle(p, d);
@@ -212,11 +226,13 @@ function updateAllies(dt) {
       if (B.syn.swarmai) { a.missT -= dt; if (a.missT <= 0) { a.missT = 3; fireMissiles({ x: a.x, y: a.y, ang: a.ang, buffs: p.buffs, moveT: 0, hp: 1, maxHp: 1 }, 1); } } }
     else if (a.kind === 'orbital') { a.ph += dt * 4 * rm; a.x = p.x + cos(a.ph) * 54; a.y = p.y + sin(a.ph) * 54;
       forEnemiesNear(a.x, a.y, 10, e => { if ((e.orbT || 0) < G.time) { e.orbT = G.time + .3; hurtEnemy(e, T.ST.orbitalDmg * (1 + B.dmg * .5), DMG.SUMMON); _tmpB.reset(); _tmpB.summon = true; applyOnHit(e, _tmpB); spray(a.x, a.y, a.ph, 1, 4, C_HEAL, 200, .2, 2); } }); }
+    else if (a.kind === 'clone') { const tx = p.x - cos(p.ang) * 34 + cos(p.ang + PI / 2) * 22, ty = p.y - sin(p.ang) * 34 + sin(p.ang + PI / 2) * 22; a.x = lerp(a.x, tx, min(1, dt * 7)); a.y = lerp(a.y, ty, min(1, dt * 7)); a.ang = p.ang; }
     else if (a.kind === 'ghost') { const t = nearestEnemy(a.x, a.y, 500); if (t) { const an = atan2(t.y - a.y, t.x - a.x); a.vx = lerp(a.vx, cos(an) * 200, dt * 5); a.vy = lerp(a.vy, sin(an) * 200, dt * 5);
         if (dist2(a.x, a.y, t.x, t.y) < (t.r + a.r) ** 2 && a.cd <= 0) { a.cd = .5; hurtEnemy(t, 15 * (1 + B.dmg * .5), DMG.SUMMON); _tmpB.reset(); _tmpB.summon = true; applyOnHit(t, _tmpB); } } a.x += a.vx * dt; a.y += a.vy * dt; collideTiles(a, a.r, true); }
   }
 }
 function updatePassives(p, dt) {
+  updatePowers(p, dt);
   if (B.tesla) { p.teslaT -= dt; if (p.teslaT <= 0) { p.teslaT = T.ST.teslaCd; const t = nearestEnemy(p.x, p.y, 240, true); if (t) { chainLightning(t, T.ST.teslaDmg * (1 + B.dmg * .5) * B.tesla, 2 + B.shockAdd, p.x, p.y - 10); } } }
   if (G.tick % 60 === 0) syncAllies();
 }
@@ -225,7 +241,7 @@ function updatePassives(p, dt) {
 // =====================================================================================
 const UPG = {}; for (const r of UPG_ROWS) UPG[r[0]] = { id: r[0], fam: r[1], rar: r[2], n: r[3], d: r[4], s: r[5], o: r[6] || {} };
 const SYN = {}; for (const r of SYN_ROWS) SYN[r[0]] = { id: r[0], a: r[1], b: r[2], n: r[3], d: r[4] };
-const RAR_NAME = ['Common', 'Rare', 'Epic', 'Legendary', 'Cursed'];
+const RAR_NAME = ['Common', 'Rare', 'Epic', '★ Legendary ★', 'Cursed Pact'];
 function upgDesc(u, html = true) {
   const v = Object.assign({}, T.ST, { burnDps: round(burnDpsPreview()), freezeDur: B ? freezeDur() : T.ST.freezeDur, poisonMax: B ? poisonMax() : T.ST.poisonMax }, u.s);
   return u.d.replace(/\{(\w+)(%?)\}/g, (_, k, pc) => { let x = v[k]; if (x === undefined) return k; x = pc ? round(x * 100) + '%' : (Math.round(x * 10) / 10); return html ? `<b>${x}</b>` : x; });
@@ -238,11 +254,11 @@ function upgAllowed(u, run) {
   return true;
 }
 // family-aware, luck-aware weighted offer roll
-function rollOffers(n, minRar, rng) {
+function rollOffers(n, minRar, rng, maxRar = 3) {
   const run = G.run, out = [], pool = Object.values(UPG).filter(u => upgAllowed(u, run));
   const rw = T.rarityW.map((w, i) => max(1, w + T.luckW[i] * (B.luck || 0)));
   for (let k = 0; k < n && pool.length; k++) {
-    let rar; if (rng.chance(T.curseChance * (k === n - 1 ? 1.5 : 0)) && pool.some(u => u.rar === 4)) rar = 4; else { rar = +rng.weighted({ 0: rw[0], 1: rw[1], 2: rw[2], 3: rw[3] }); rar = max(rar, minRar); }
+    let rar; if (rng.chance(T.curseChance * (k === n - 1 ? 1.5 : 0)) && pool.some(u => u.rar === 4)) rar = 4; else { rar = +rng.weighted({ 0: rw[0], 1: rw[1], 2: rw[2], 3: rw[3] }); rar = clamp(rar, minRar, max(minRar, maxRar)); }
     let cand = pool.filter(u => u.rar === rar && !out.includes(u)); for (let r = rar; !cand.length && r >= 0; r--) cand = pool.filter(u => u.rar === r && !out.includes(u));
     if (!cand.length) cand = pool.filter(u => !out.includes(u)); if (!cand.length) break;
     const w = {}; for (const u of cand) { const fc = famCount(u.fam); let wt = 1 + (fc > 0 ? .7 : 0); if (fc === 1 && synPartnerReady(u.fam)) wt += .8; w[u.id] = wt; }
@@ -261,7 +277,7 @@ function synHint(u) {
 function pickUpgrade(id, silent = false) {
   const u = UPG[id], run = G.run; for (const k in u.s) B[k] = (B[k] || 0) + u.s[k];
   B.picks[id] = (B.picks[id] || 0) + 1; B.fam[u.fam] = (B.fam[u.fam] || 0) + 1; run.upgrades.push(id); codexSee('upg', id);
-  if (!silent) { A.play(u.rar >= 2 ? 'rare' : 'pick'); }
+  if (!silent) { A.play(u.rar >= 2 ? 'rare' : 'pick'); onPickPower(u); }
   if (run.upgrades.filter(x => UPG[x].rar === 4).length >= 3) unlockAch('cursed3');
   recalcPlayer(); refreshWeapons(); if (G.player) syncAllies(); checkSynergies();
 }

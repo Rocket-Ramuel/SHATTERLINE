@@ -30,6 +30,7 @@ const TEMPLATE_BIAS = [
   { arena: 3, cross: 2, ring: 2, halls: 2, diamond: 1, oct: 2, pillars: 3, courtyard: 2, ell: 2, twin: 1, cave: 0 },
   { arena: 3, cross: 2, ring: 2, halls: 3, diamond: 1, oct: 2, pillars: 3, courtyard: 2, ell: 2, twin: 2, cave: 1 },
   { arena: 2, cross: 1, ring: 2, halls: 1, diamond: 2, oct: 2, pillars: 1, courtyard: 1, ell: 1, twin: 3, cave: 4 },
+  { arena: 2, cross: 2, ring: 2, halls: 1, diamond: 3, oct: 3, pillars: 2, courtyard: 1, ell: 1, twin: 3, cave: 3 },
   { arena: 3, cross: 2, ring: 3, halls: 2, diamond: 2, oct: 3, pillars: 2, courtyard: 3, ell: 2, twin: 2, cave: 1 },
 ];
 class TileGrid {
@@ -101,7 +102,7 @@ function genRoom(run, node) {
     room.lights.push({ x: (x + .5) * TS, y: (y + .5) * TS, r: r.range(110, 170), c: r.chance(.6) ? bio.edge : bio.acc, a: .55 }); }
   room.amb = bio.amb;
   room.flow = new FlowField(room); room.clear = clearanceField(room);
-  buildRoomPaths(room);
+  buildRoomPaths(room); bakeRoomFloor(room); buildWallFaces(room);
   return room;
 }
 function floodFrom(room, sx, sy) {

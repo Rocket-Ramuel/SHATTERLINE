@@ -3,6 +3,7 @@
 // =====================================================================================
 const LASERS = [];
 function laser(x, y, ang, warn, dur, vr = 0, w = 14, dmg = 18, owner = null, col = '#ff2bd6') {
+  if (owner ? owner.boss : G.boss) dmg *= G.enemyScaleDmg;
   const l = { x, y, ang, warn, dur, t: 0, vr, w, dmg, owner, col, len: 0, on: false, ox: owner ? x - owner.x : 0, oy: owner ? y - owner.y : 0 }; LASERS.push(l); A.play('laser', x, y, .35, 1.4); return l;
 }
 function updateLasers(dt) {
@@ -12,9 +13,9 @@ function updateLasers(dt) {
     if (l.owner) { l.x = l.owner.x + l.ox; l.y = l.owner.y + l.oy; }
     if (l.t > l.warn) { if (!l.on) { l.on = true; A.play('laser', l.x, l.y, .6, .9); trauma(.12); } l.ang += l.vr * dt; }
     else l.ang += l.vr * dt * .15;
-    l.len = raycast(l.x, l.y, cos(l.ang), sin(l.ang), 1600, 1);
+    l.len = l.fixed ? l.fixedLen : raycast(l.x, l.y, cos(l.ang), sin(l.ang), 1600, 1);
     if (l.on && !p.dead) { const dx = p.x - l.x, dy = p.y - l.y, c = cos(l.ang), s = sin(l.ang), along = dx * c + dy * s, perp = abs(dx * s - dy * c);
-      if (along > 0 && along < l.len && perp < l.w * .5 + p.r * .6) hurtPlayer(l.dmg * G.enemyScaleDmg, 'Laser'); }
+      if (along > 0 && along < l.len && perp < l.w * .5 + p.r * .6) hurtPlayer(l.dmg, l.owner && !l.owner.boss ? l.owner.def.n : 'Laser'); }
     if (l.on && rnd() < .5) emit(PK.SPARK, l.x + cos(l.ang) * l.len, l.y + sin(l.ang) * l.len, rr(-150, 150), rr(-150, 150), .2, 3, ci(l.col));
   }
 }
@@ -105,8 +106,27 @@ const BOSSES = {
       *lash(e) { for (let k = 0; k < 3; k++) { const g = BOSSES.bloom.atk.sweep(e); for (let r = g.next(); !r.done; r = g.next()) yield r.value * .6; } },
     },
   },
+  choir: { // five singing crystals orbit a hollow core
+    phases: [['chorus', 'resonance', 'shardrain'], ['pentagram', 'chorus', 'summon', 'resonance'], ['pentagram', 'crescendo', 'shardrain', 'blinkstorm']],
+    move(e, dt) { e.spin = (e.spin || 0) + dt * (.8 + e.phase * .35); const c = arenaC(); if (!e.hold) seekPoint(e, c.x + cos(G.time * .3) * 140, c.y + sin(G.time * .45) * 100, 50, 60); },
+    onPhase(e, ph) { e.nodeR = 90; if (ph === 2) toast('CRESCENDO', 'The Choir sings as one'); },
+    tick(e, dt) { if (!e.fence) return; for (let i = 0; i < 5; i++) { const l = e.fence[i]; choirNode(e, i); l.x = _nx; l.y = _ny; const x0 = _nx, y0 = _ny; choirNode(e, (i + 2) % 5); l.ang = atan2(_ny - y0, _nx - x0); l.fixedLen = hypot(_nx - x0, _ny - y0); } },
+    atk: {
+      *chorus(e) { for (let k = 0; k < 3; k++) { for (let i = 0; i < 5; i++) { choirNode(e, i); const p = G.player, a = atan2(p.y - _ny, p.x - _nx); eShot(_nx, _ny, a, 240 + e.phase * 30, e.bdmg, 4, 'Choir', 2, e); A.play('eshot', _nx, _ny, .3, 1.6 + i * .1); yield .09; } yield .35; } yield .6; },
+      *resonance(e) { for (let k = 0; k < 3 + e.phase; k++) { const off = k * .13, n = 32, gap = ((round((toP(e) - off) / TAU * n) % n) + n) % n; ringShot(e, n, 135, off, 5, 3, (gap - 2 + n) % n, 5); A.play('shatter', e.x, e.y, .5, .8 + k * .1); ring(e.x, e.y, 60, ci(e.col), .3, 3); yield .75; } yield .6; },
+      *pentagram(e) { e.fence = []; for (let i = 0; i < 5; i++) { const l = laser(e.x, e.y, 0, 1.1, 5, 0, 10, 18, null, '#3dffd8'); l.fixed = true; l.fixedLen = 1; e.fence.push(l); }
+        toast('PENTAGRAM', 'Stay clear of the star'); for (let t = 0; t < 6.1; t += 1 / 120) { e.nodeR = 90 + sin(min(1, t / 6.1) * PI) * 170; if (t > 1.1 && floor(t * 120) % 60 === 0) ringShot(e, 10, 110, t, 5, 0); yield 0; } e.fence = null; e.nodeR = 90; yield .5; },
+      *shardrain(e) { for (let k = 0; k < 9 + e.phase * 3; k++) { const p = G.player, x = p.x + (p.vx || 0) * .4 + rr(-110, 110), y = p.y + (p.vy || 0) * .4 + rr(-110, 110); tele('circle', x, y, 34, 0, .8, '#3dffd8');
+          addTimer(.8, () => { burst(x, y, 12, ci('#3dffd8'), 260, .4, 3, PK.SHARD); A.play('shatter', x, y, .4); const p2 = G.player; if (dist2(p2.x, p2.y, x, y) < (34 + p2.r * .5) ** 2) hurtPlayer(e.bdmg, 'Crystal Shard', x, y);
+            for (let i = 0; i < 6; i++) eShot(x, y, i / 6 * TAU + rnd(), 120, e.bdmg * .8, 4, 'Crystal Shard', 3, e); }); yield .17; } yield .8; },
+      *summon(e) { if (G.alive < 6) { const c = arenaC(); for (let i = 0; i < 2; i++) { const a = rnd() * TAU; spawnEnemy(rnd() < .5 ? 'geode' : 'hound', c.x + cos(a) * 280, c.y + sin(a) * 280).noDrop = true; } A.play('spawn', e.x, e.y); } yield 1.2; },
+      *crescendo(e) { for (let t = 0; t < 4; t += .1) { for (let i = 0; i < 5; i++) { choirNode(e, i); const a = atan2(_ny - e.y, _nx - e.x) + PI / 2; eShot(_nx, _ny, a, 150, e.bdmg, 4.5, 'Choir', i % 2 ? 3 : 0, e); } if (t % .5 < .1) A.play('eshot', e.x, e.y, .3, 1.2); yield .1; } yield .6; },
+      *blinkstorm(e) { for (let k = 0; k < 3; k++) { const c = arenaC(), a = rnd() * TAU, d = rr(80, 260), x = c.x + cos(a) * d, y = c.y + sin(a) * d; tele('mark', x, y, 26, 0, .7, '#3dffd8'); A.play('blink', e.x, e.y, .7, .6); e.hold = 1; yield .7;
+          burst(e.x, e.y, 20, ci(e.col), 260, .4, 3, PK.SHARD); e.x = e.px = x; e.y = e.py = y; ringShot(e, 22, 150, rnd() * TAU, 5, 0); trauma(.3); yield .5; } e.hold = 0; yield .5; },
+    },
+  },
   arch: {
-    phases: [['square', 'grid', 'tri'], ['echoPrism', 'echoForge', 'echoBloom', 'summon', 'grid'], ['spiral4', 'homing', 'sweep', 'grid', 'tri']],
+    phases: [['square', 'grid', 'tri'], ['echoPrism', 'echoForge', 'echoBloom', 'echoChoir', 'summon', 'grid'], ['spiral4', 'homing', 'sweep', 'grid', 'tri']],
     move(e, dt) { const c = arenaC(); e.spin = (e.spin || 0) + dt * (1 + e.phase * .4); seekPoint(e, c.x + sin(G.time * .5) * 150, c.y + sin(G.time * .8) * 90, 70, 60); },
     onPhase(e, ph) { if (ph === 2) { e.shrink = 1; e.shrinkR = 560; toast('COLLAPSE', 'The arena is closing in'); } },
     tick(e, dt) { if (e.shrink) { const c = arenaC(), p = G.player; e.shrinkR = max(300, e.shrinkR - dt * 12); if (dist2(p.x, p.y, c.x, c.y) > e.shrinkR * e.shrinkR) { e.shT = (e.shT || 0) - dt; if (e.shT <= 0) { e.shT = .5; hurtPlayer(12, 'Collapse Field'); } } } },
@@ -118,6 +138,7 @@ const BOSSES = {
       *echoPrism(e) { yield* BOSSES.prism.atk.spokes(e); },
       *echoForge(e) { e.hold = 1; ringShot(e, 30, 170, toP(e), 5, 0, floor(rnd() * 30), 3); trauma(.4); A.play('slam', e.x, e.y); yield .6; ringShot(e, 30, 150, toP(e) + .1, 5, 3, floor(rnd() * 30), 3); e.hold = 0; yield 1; },
       *echoBloom(e) { yield* BOSSES.bloom.atk.petals(e); },
+      *echoChoir(e) { yield* BOSSES.choir.atk.resonance(e); },
       *summon(e) { if (G.enemies.filter(o => !o.dead && !o.boss).length < 4) { const c = arenaC(); for (let i = 0; i < 2; i++) { const t = G.run.rng.pick(['gunner', 'ram', 'bulwark', 'lancer', 'phantom', 'jugg']), a = rnd() * TAU; spawnEnemy(t, c.x + cos(a) * 300, c.y + sin(a) * 300, { elite: [G.run.rng.pick(T.elite.mods)] }).noDrop = true; } } yield 1.5; },
       *spiral4(e) { let a = rnd() * TAU; for (let t = 0; t < 4; t += .07) { for (let k = 0; k < 4; k++) bS(e, a + k * PI / 2, 165, 5, k % 2 ? 3 : 0); a += .19 + t * .02; yield .07; } yield .5; },
       *homing(e) { for (let i = 0; i < 6; i++) { const b = bS(e, e.spin + i * TAU / 6, 110, 7, 1); b.homing = 1.3; b.life = 4.5; } A.play('eshotBig', e.x, e.y, .6, .7); yield 1.6; },
@@ -126,13 +147,15 @@ const BOSSES = {
   },
 };
 const VINES = [];
+let _nx = 0, _ny = 0;
+function choirNode(e, i) { const a = (e.spin || 0) + i / 5 * TAU, r = e.nodeR || 90; _nx = e.x + cos(a) * r; _ny = e.y + sin(a) * r; }
 // generic boss brain wired into the enemy system
 for (const id in BOSSES) BRAINS['boss_' + id] = { acts: { fight: { score: () => 1, run: (e, dt) => BOSS.run(e, dt) } }, fire() { } };
 const BOSS = {
   spawn(id) {
     const c = arenaC(), d = T.boss[id], e = spawnEnemy('jugg', c.x, c.y - 120, { noTele: true, noCodex: true });
     e.boss = true; e.bossId = id; e.def = Object.assign({}, T.E.jugg, { n: d.n, b: 'boss_' + id, cost: 0 }); e.brain = BRAINS['boss_' + id]; e.r = d.r; e.col = d.col; e.mass = 50; e.armor = 0;
-    e.maxHp = e.hp = d.hp * (G.run.heat > 6 ? 1.25 : 1) * (1 + B.enemyHp); e.phase = 0; e.introT = 2.6; e.gen = null; e.waitT = 1; e.bdmg = 11 * [1, 1.15, 1.3, 1.45][G.run.biome]; G.enemyScaleDmg = [.8, .9, 1, 1.1][G.run.biome];
+    e.maxHp = e.hp = d.hp * (G.run.heat > 6 ? 1.25 : 1) * (1 + B.enemyHp); e.phase = 0; e.introT = 2.6; e.gen = null; e.waitT = 1; e.bdmg = 11 * [1, 1.15, 1.3, 1.4, 1.5][G.run.biome]; G.enemyScaleDmg = [.8, .9, 1, 1.05, 1.1][G.run.biome]; e.nodeR = 90; e.fence = null;
     G.boss = e; G.cam.focus = e; G.cam.focusT = 2.4; A.play('roar', e.x, e.y); A.duck(.6, 1.5); MUS.setTheme(G.run.biome, true); MUS.stinger('boss'); MUS.setIntensity(4);
     UI.bossIntro(d.n, d.t); codexSee('boss', id); LASERS.length = 0; VINES.length = 0; return e;
   },

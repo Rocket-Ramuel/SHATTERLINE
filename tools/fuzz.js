@@ -29,7 +29,7 @@ const { chromium } = require('playwright'); const path = require('path');
   for (const w of ['sidearm', 'rail', 'beam', 'arc', 'scatter', 'rocket', 'orbit', 'mines', 'flamer', 'bow']) await run('ALL+' + w, { char: 'volt', w, all: true, ticks: 1200, biome: 2 });
   for (const w of ['sidearm', 'flamer', 'bow', 'rail']) await run('CURSES+' + w, { char: 'ember', w, curses: true, ticks: 2400, biome: 1 });
   await run('CURSES+ALL', { char: 'wraith', w: 'stinger', curses: true, all: true, ticks: 2400, biome: 3 });
-  for (let b = 0; b < 4; b++) await run('boss' + b, { char: 'kestrel', type: 'boss', biome: b, ticks: 6000, all: b === 3 });
+  for (let b = 0; b < 5; b++) await run('boss' + b, { char: 'kestrel', type: 'boss', biome: b, ticks: 6000, all: b === 4 });
   for (const t of ['shop', 'treasure', 'rest', 'event', 'elite', 'challenge']) await run('room:' + t, { char: 'wraith', type: t, ticks: 3000, biome: 3, heat: 10 });
   console.log('ERRORS', errs.length); errs.slice(0, 20).forEach(e => console.log(e));
   await browser.close();

@@ -10,7 +10,8 @@ index.html        ← the game (generated, self-contained, open directly in a br
 src/*.js|html     ← source sections, concatenated in name order into index.html
 tools/build.js    ← `node tools/build.js` → index.html
 tools/test.js     ← Playwright smoke / turbo bot run / scene capture / stress profile
-tools/fuzz.js     ← exception fuzzing: every weapon, character, active, room, boss, all-upgrade build
+tools/fuzz.js     ← exception fuzzing: every weapon, character, active, room, boss, all-upgrade build, all pacts
+tools/balance.js  ← DPS harness: weapons/builds vs a single target and a 6-enemy cluster
 DESIGN.md / PROGRESS.md
 ```
 
@@ -105,30 +106,49 @@ Layered, all shared/cached so 300 enemies stay cheap.
 9. **Fairness**: every attack has wind-up glow + audio + ground marker, attacker caps, off-screen threat
    arrows, 0.9 s spawn telegraphs, death recap.
 
-### Roster (17)
+### Roster (28)
 Mite (swarmer), Gunner, Ram (charger), Bulwark (shield), Lancer (sniper), Lobber (mortar), Brood (summoner),
 Phantom (teleport assassin), Tick (kamikaze), Mender (healer), Warden (buffer), Delver (burrower),
-Spire (turret), Mimic, Gel (splitter), Wisp (drone), Juggernaut (brute).
+Spire (turret), Mimic, Gel (splitter), Wisp (drone), Juggernaut (brute), Hound (circling flanker),
+Sentinel (sweeping laser), Cryo Hurler (frost bombs), Fencer + Pylon (electric fence between them),
+Spore Spitter (acid pools), Siphon (draining tether), Geode (armoured, retaliates with shards when shot),
+Rift Caller (opens spawning rifts), Siege Walker (artillery lines), Stalker (unkillable, Hunted pact only).
+Spawns come as themed **squads** (`T.SQUADS`, e.g. anchor + support + flankers) so each fight has a readable
+composition; every enemy shares one visual language: dark body, coloured plate, bright rim, white eye that
+glows on wind-up.
 Elite modifiers: Vampiric, Hasted, Splitting, Shielded, Volatile, Reflective (stackable).
 
 ### Bosses (3 phases each)
 Prism Warden (Neon Ruins), Cryo Forgemaster (Frozen Foundry), Mother Bloom (Toxic Undergrowth),
-The Architect (The Core, final). Intro: letterbox + pan + title card + stinger. Death: slow-mo, chained
+The Hollow Choir (Crystal Abyss: rotating crystal nodes, tethers, sweeping lasers), The Architect (The Core, final). Intro: letterbox + pan + title card + stinger. Death: slow-mo, chained
 explosions, flash, shards.
 
 ## 5. Builds
-* 13 weapons, 5 characters, ~90 upgrades in 12 families + general + cursed, 24 synergies (auto-activate
-  when two families each have ≥2 picks; codex records them).
+* 13 weapons, 5 characters, ~135 upgrades in 12 families + general (incl. 13 **legendaries** that change
+  rules — Black Sun, Hydra, Time Fracture, Mirror Self…) and 13 **cursed pacts**, 24 synergies.
+* Pacts are not "upgrade with a drawback": each changes the rules of the run (Hunted: an unkillable Stalker
+  follows you; Doomsday: rooms have a clock; Frenzy: you always fire; Darkness: light radius shrinks…) with a
+  big boon to match. Rest sites can cleanse one.
+* **Anti-snowball**: every weapon has a proc coefficient (`wPc`) so on-hit/on-shot effects scale with damage
+  per shot, not shots per second (flamer/minigun can't machine-gun missiles); explosion procs can't chain;
+  an adaptive threat multiplier (`run.perf`) raises enemy HP/budget when you clear rooms fast and untouched,
+  and relaxes when you struggle; rarity is capped by sector so early runs can't roll three Epics.
+* Healing: base regen 1 HP / 3 s, heal orbs from kills, room-clear heal, elite heal, healing upgrades
+  (Vital Core, Nanite, Field Kit, Leech, Second Heart…), overheal shield.
 * Upgrade rows live in the tuning table: `[id, family, rarity, name, desc-template, stats]`; picking adds
   `stats` into `B`; description numbers are rendered *from the same stats* so tooltips are always exact.
 * Rewards: 3 cards per room (family-weighted toward what you own), reroll, banish, shops, treasure,
   cursed items.
 
 ## 6. World
-* 4 biomes × branching map (6 layers + boss). Node types: combat, elite, shop, treasure, challenge, rest,
+* 5 biomes (Neon Ruins, Frozen Foundry, Toxic Undergrowth, Crystal Abyss, The Core) × branching map
+  (7 layers + boss). Node types: combat, elite, shop, treasure, challenge, rest,
   event, boss.
 * Rooms: template generators (arena, cross, ring, halls, diamond, pillars, courtyard, L, field, boss arenas)
   + seeded variation (symmetry, destructible cover, barrels, hazards). Doors lock in combat.
+* Art: each room's floor is baked once into an offscreen canvas with biome motifs (circuits, frost cracks and
+  pipes, moss and roots, crystals, molten seams) + ambient occlusion; walls get lit tops, darker faces and seams;
+  a parallax starfield/nebula backdrop and per-biome ambience particles (snow, spores, embers…).
 * Seeds: per-run seed string; every room/map/offer gets its own RNG derived from `seed:biome:node:purpose`,
   so content is independent of combat randomness → replayable/shareable.
 

@@ -125,6 +125,7 @@ function playerHazard(p, hz, dt) {
   if (hz.k === 'lava' && G.run.char !== 'ember') { hurtPlayer(H.lava.dps * .5, 'Lava'); }
   else if (hz.k === 'elec' && hz.st === 2) hurtPlayer(H.elec.dmg, 'Electric Floor');
   else if (hz.k === 'spike') { stepHazard(hz); if (hz.st === 2) hurtPlayer(H.spike.dmg, 'Spike Trap'); }
+  else if (hz.k === 'void') { p.vx *= 1 - T.haz.void.slow * dt * 8; p.vy *= 1 - T.haz.void.slow * dt * 8; p.voidT = (p.voidT || 0) + dt; if (p.voidT > T.haz.void.tick) { p.voidT = 0; hurtPlayer(T.haz.void.dmg, 'Void Rift'); } }
   else if (hz.k === 'acid') { p.acidT = (p.acidT || 0) + dt; if (p.acidT > .8) { p.acidT = 0; hurtPlayer(6, 'Acid Pool'); } }
 }
 function aimAssist(p, a) {
@@ -180,7 +181,7 @@ function hurtEnemy(e, dmg, kind, crit = false, kx = 0, ky = 0) {
   if (!(kind & DMG.DOT)) { e.flash = .07; e.squash = .25; }
   if (kx || ky) { const m = e.boss ? 0 : 1 / (e.mass || 1); e.kbx += kx * m; e.kby += ky * m; }
   if (dmg >= 1 || crit) dmgNumber(e.x, e.y - e.r, dmg, crit, kind & DMG.DOT ? '#bfc8dc' : kind & DMG.SHOCK ? '#d8c2ff' : null);
-  if (e.boss) BOSS.onHurt(e, dmg);
+  if (e.boss) BOSS.onHurt(e, dmg); else if (e.brain.onHurt) e.brain.onHurt(e, dmg);
   if (e.hp <= 0) { const ex = -e.hp; killEnemy(e, kind, crit); if (B.overkill) overkillLeap(e, ex); }
   return dmg;
 }
@@ -584,7 +585,7 @@ function simTick(dt) {
   updatePlayerBullets(dt);
   updateEnemyBullets(dt);
   updateAllies(dt); updateZones(dt); updateProps(dt); updatePickups(dt); updateTimers(dt);
-  updateHazards(dt); hazardsOnEnemies(dt);
+  updateHazards(dt); hazardsOnEnemies(dt); updateTethers(dt); updateTele(dt);
   if ((G.tick % T.sim.hz) === 0) statusSpread();
   ROOMS.update(dt);
   // sweep dead enemies

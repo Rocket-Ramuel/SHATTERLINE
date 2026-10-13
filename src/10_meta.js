@@ -80,12 +80,11 @@ function roomCleared() {
   if (B.secondWind && p.hp < p.maxHp * .4) healPlayer(p.maxHp * B.secondWind);
   healPlayer(p.maxHp * T.ST.roomHeal); for (const e of G.enemies) if (e.untouchable) { e.dead = true; burst(e.x, e.y, 30, ci(e.col), 300, .6, 4, PK.SHARD); }
   dropGold(p.x, p.y - 40, T.gold.room * (room.type === 'elite' ? 1.8 : 1) * (1 + B.gold));
-  if (run.biome === 3 && !run.reachedCore) { run.reachedCore = true; }
   const open = () => { room.open = true; wtext(p.x, p.y - 30, 'EXIT OPEN', '#50ffaa', 12, 1.2, -20); };
   const chaos = () => { if (B.chaos) { const u = rollOffers(1, 0, run.rng)[0]; if (u) { pickUpgrade(u.id); toast('UNSTABLE RIFT', u.n); } } };
   if (room.type === 'boss') {
     addTimer(.6, () => rewardScreen({ title: 'Boss Defeated', sub: 'A legendary power awaits', minRar: 2, extra: 1, tag: 'boss', legendary: true, then: () => {
-      const c = arenaC(); const last = run.biome >= 3;
+      const c = arenaC(); const last = run.biome >= T.BIO.length - 1;
       addProp('portal', c.x, c.y, { r: 30, interact: () => last ? endRun(true) : nextBiome(), label: last ? 'ASCEND' : 'NEXT SECTOR', sub: last ? 'Finish the run' : T.BIO[run.biome + 1].n });
       healPlayer(p.maxHp * .25, true); open(); } }));
     return;
@@ -95,12 +94,11 @@ function roomCleared() {
 function leaveRoom() {
   const run = G.run, node = run.map.byId[run.map.cur]; node.done = true; A.play('door', G.player.x, G.player.y); UI.hint('');
   if (node.type === 'boss') { nextBiome(); return; }
-  if (run.biome === 3 && !run.timedCore) { run.timedCore = true; }
   mapScreen();
 }
 function nextBiome() {
-  const run = G.run; if (run.biome >= 3) { endRun(true); return; }
-  run.biome++; run.map = genMap(run, run.biome); run.map.cur = null; if (run.biome === 3 && run.stats.time < 14 * 60) unlockAch('fast');
+  const run = G.run; if (run.biome >= T.BIO.length - 1) { endRun(true); return; }
+  run.biome++; run.map = genMap(run, run.biome); run.map.cur = null; if (run.biome === T.BIO.length - 1 && run.stats.time < 20 * 60) unlockAch('fast');
   toast(T.BIO[run.biome].n, `Sector ${run.biome + 1}`); MUS.setTheme(run.biome); mapScreen();
 }
 function endRun(win) {
@@ -217,7 +215,7 @@ setInterval(botUi, 400);
 // title-screen attract mode: the bot plays a demo room
 function startDemo() {
   G.demo = true; G.bot = true; G.godMode = true; B = newBuild(); const r = new RNG('demo' + floor(rnd() * 999)), chars = Object.keys(T.CH), char = r.pick(chars);
-  const run = G.run = { seed: 'DEMO', char, heat: 0, biome: r.int(0, 3), gold: 0, hp: 100, maxHp: 100, weapons: [makeWeapon(r.pick(['sidearm', 'stinger', 'scatter', 'disc', 'arc']))], wi: 0, actives: [null, null], upgrades: [], synergies: [], banished: new Set(),
+  const run = G.run = { seed: 'DEMO', char, heat: 0, biome: r.int(0, T.BIO.length - 1), gold: 0, hp: 100, maxHp: 100, weapons: [makeWeapon(r.pick(['sidearm', 'stinger', 'scatter', 'disc', 'arc']))], wi: 0, actives: [null, null], upgrades: [], synergies: [], banished: new Set(),
     rerolls: 0, banishes: 0, combo: 0, comboT: 0, recap: [], perf: 1, rng: r, stats: { time: 0, kills: 0, elites: 0, dmgDealt: 0, dmgTaken: 0, grazes: 0, maxCombo: 0, gold: 0, rooms: 0, bosses: 0, dashes: 0 } };
   run.map = genMap(run, run.biome); const node = run.map.layers[3][0]; node.type = 'combat'; run.map.cur = node.id;
   for (const id of ['kindling', 'static', 'rubber', 'frag']) if (r.chance(.5)) pickUpgrade(id, true);

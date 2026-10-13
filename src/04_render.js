@@ -238,21 +238,21 @@ function buildRoomPaths(room) {
 }
 function drawRoom(ctx, room, bio) {
   const ts = T.tile, P2 = room.paths; camXf();
-  ctx.fillStyle = bio.floor; ctx.fillRect(0, 0, room.w * ts, room.h * ts);
-  ctx.fillStyle = bio.floor2; ctx.fill(P2.f2);
-  ctx.strokeStyle = bio.grid; ctx.lineWidth = 1; ctx.globalAlpha = .55; ctx.stroke(P2.grid); ctx.globalAlpha = .7; ctx.lineWidth = 1.2; ctx.stroke(P2.deco); ctx.globalAlpha = 1;
+  ctx.drawImage(room.floorCv, 0, 0, room.w * ts, room.h * ts);
   ctx.drawImage(DEC.c, 0, 0, room.w * ts, room.h * ts);
   drawHazards(ctx, room, bio);
 }
 function drawWalls(ctx, room, bio) {
   const P2 = room.paths, ts = T.tile; camXf();
-  ctx.fillStyle = bio.wall; ctx.fill(P2.wall);
-  ctx.strokeStyle = bio.top; ctx.lineWidth = 6; ctx.globalAlpha = .6; ctx.stroke(P2.edge); ctx.globalAlpha = 1;
+  ctx.fillStyle = bio.top; ctx.fill(P2.wall);
+  ctx.fillStyle = room.faceCol || (room.faceCol = mixHex(bio.wall, '#000000', .35)); ctx.fill(P2.face);
+  ctx.strokeStyle = rgba(bio.edge, .25); ctx.lineWidth = 1; ctx.stroke(P2.seams);
+  ctx.strokeStyle = bio.wall; ctx.lineWidth = 5; ctx.globalAlpha = .7; ctx.stroke(P2.edge); ctx.globalAlpha = 1;
   ctx.strokeStyle = bio.edge; ctx.lineWidth = 1.8; ctx.stroke(P2.edge);
   // destructible cover
   for (const i of room.coverList) {
     if (room.tiles[i] !== 2) continue; const x = (i % room.w) * ts, y = floor(i / room.w) * ts, f = room.hp[i] / T.room.coverHp;
-    ctx.fillStyle = bio.top; ctx.fillRect(x + 2, y + 2, ts - 4, ts - 4); ctx.strokeStyle = bio.acc; ctx.globalAlpha = .45 + .55 * f; ctx.lineWidth = 1.5; ctx.strokeRect(x + 3, y + 3, ts - 6, ts - 6);
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(x + 4, y + 6, ts - 4, ts - 4); ctx.fillStyle = bio.top; ctx.fillRect(x + 2, y + 2, ts - 4, ts - 4); ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(x + 2, y + 2, ts - 4, 3); ctx.strokeStyle = bio.acc; ctx.globalAlpha = .45 + .55 * f; ctx.lineWidth = 1.5; ctx.strokeRect(x + 3, y + 3, ts - 6, ts - 6);
     ctx.beginPath(); ctx.moveTo(x + 7, y + 7); ctx.lineTo(x + ts - 7, y + ts - 7); if (f < .66) { ctx.moveTo(x + ts - 7, y + 7); ctx.lineTo(x + 12, y + 18); } ctx.stroke(); ctx.globalAlpha = 1;
   }
   // doors
@@ -273,6 +273,8 @@ function drawHazards(ctx, room, bio) {
         ctx.fillRect(x + 6 + 8 * sin(t + i), y + 10, 8, 4); break; }
       case 'acid': { const p = .6 + .4 * sin(t * 1.7 + i * 1.3); ctx.fillStyle = `rgba(110,255,40,${.25 + .15 * p})`; ctx.fillRect(x, y, ts, ts); ctx.fillStyle = 'rgba(200,255,120,.45)';
         ctx.beginPath(); ctx.arc(x + 10 + 10 * sin(i), y + 16 + 6 * cos(t * 2 + i), 2.5 * p, 0, TAU); ctx.fill(); break; }
+      case 'void': { const p2 = .5 + .5 * sin(t * 1.3 + i * .7); ctx.fillStyle = `rgba(10,0,30,${.7 + .2 * p2})`; ctx.fillRect(x, y, ts, ts); ctx.strokeStyle = `rgba(150,90,255,${.35 + .3 * p2})`; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(x + 16, y + 16, 5 + 7 * ((t * .6 + i * .37) % 1), 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.arc(x + 16, y + 16, 3 + 9 * ((t * .6 + i * .37 + .5) % 1), t, t + 3); ctx.stroke(); break; }
       case 'ice': { ctx.fillStyle = 'rgba(160,230,255,.13)'; ctx.fillRect(x, y, ts, ts); ctx.strokeStyle = 'rgba(200,240,255,.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 4, y + 24); ctx.lineTo(x + 20, y + 8); ctx.stroke(); break; }
       case 'elec': { const st = hz.st; // 0 off,1 warn,2 on
         ctx.strokeStyle = st === 2 ? '#ffffff' : st === 1 ? '#ffe23a' : rgba(bio.acc, .35); ctx.lineWidth = st === 2 ? 2 : 1.2; ctx.globalAlpha = st === 1 ? (.4 + .6 * (sin(t * 40) > 0)) : 1;
@@ -351,14 +353,15 @@ function aberrate(v) { R.ab = max(R.ab, v); }
 function render(alpha, dt, wdt) {
   const ctx = R.c;
   updateCamera(dt, alpha);
-  updateParticles(wdt); updateTele(wdt);
+  updateParticles(wdt);
   R.flash = max(0, R.flash - dt * 4); R.ab = max(0, R.ab - dt * .03);
   const hpF = G.player && G.state === 'play' ? G.player.hp / G.player.maxHp : 1;
   R.lowHp = lerp(R.lowHp, hpF < T.fx.lowHp ? (1 - hpF / T.fx.lowHp) * .7 + .3 * (.5 + .5 * sin(G.rt * 6)) * (1 - hpF / T.fx.lowHp) : 0, 1 - exp(-dt * 5));
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   const room = G.room, bio = T.BIO[room ? room.biome : 0];
-  ctx.fillStyle = bio.bg; ctx.fillRect(0, 0, R.W, R.H);
+  drawBackdrop(ctx, bio);
   if (room && room.paths) {
+    ambience(wdt, bio);
     decalsFade(wdt);
     drawRoom(ctx, room, bio);
     drawWalls(ctx, room, bio);
@@ -369,7 +372,7 @@ function render(alpha, dt, wdt) {
       renderLighting(ctx, B && B.darkness ? mixHex(room.amb || bio.amb, '#000000', .55) : room.amb || bio.amb); } else { LQ.n = 0; FLASHES.length = 0; }
     drawActors(ctx, alpha);
     // emissive layer
-    camXf(); ctx.globalCompositeOperation = 'lighter'; drawTele(ctx); camXf(); drawParticles(ctx, 1); drawBeams(ctx, wdt); drawEmissive(ctx, alpha);
+    camXf(); ctx.globalCompositeOperation = 'lighter'; drawTele(ctx); camXf(); drawParticles(ctx, 1); drawBeams(ctx, wdt); drawEmissive(ctx, alpha); camXf(); drawTethers(ctx);
     ctx.globalCompositeOperation = 'source-over'; drawEnemyBullets(ctx, alpha); drawWorldText(ctx, wdt);
   }
   ctx.setTransform(1, 0, 0, 1, 0, 0);

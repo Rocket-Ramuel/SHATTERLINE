@@ -66,47 +66,6 @@ function drawProp(ctx, pr) {
       ctx.font = '600 6.5px ui-monospace,monospace'; ctx.fillStyle = '#8a93b8'; ctx.fillText('[' + bindLabel(IN.binds.interact[IN.device === 'pad' ? 2 : 0]) + ']', pr.x, pr.y + 26); }
   }
 }
-function drawEnemy(ctx, e, alpha) {
-  const x = lerpX(e, alpha), y = lerpY(e, alpha); if (!inView(x, y, e.r * 3 + 20)) return;
-  const sh = SH[e.type] || SH.circ, t = G.rt;
-  if (e.spawnT > 0) { const f = 1 - e.spawnT / T.director.spawnDelay; xf(ctx, x, y, t * 4, e.r * (2.2 - f * 1.2), e.r * (2.2 - f * 1.2)); ctx.lineWidth = .08; ctx.strokeStyle = e.col; ctx.globalAlpha = .4 + f * .6; ctx.stroke(SH.hex); ctx.globalAlpha = f * .7; xf(ctx, x, y, e.ang, e.r * f, e.r * f); ctx.fillStyle = e.col; ctx.fill(sh); ctx.globalAlpha = 1; return; }
-  if (e.burrowed) { xf(ctx, x, y, 0, e.r * 1.1, e.r * .6); ctx.fillStyle = '#2a1c12'; ctx.fill(SH.circ); ctx.lineWidth = .1; ctx.strokeStyle = '#8a6a50'; ctx.stroke(SH.circ); return; }
-  if (e.boss) { drawBoss(ctx, e, x, y); return; }
-  const sq = e.squash, wob = e.type === 'gel' ? sin(e.bob * 1.5) * .08 : 0, sx = e.r * (1 + sq + wob), sy = e.r * (1 - sq * .7 - wob), lift = e.fly ? -6 + sin(e.bob) * 2 : 0;
-  const rot = ROT_FREE[e.type] ? (e.type === 'spire' ? e.a || 0 : 0) : e.ang;
-  const wind = e.atkPhase === 1 ? 1 - e.atkT / e.atkDur : 0, fl = e.flash > 0;
-  ctx.globalAlpha = e.alpha !== undefined ? e.alpha : 1; if (e.type === 'phantom') ctx.globalAlpha *= .75 + .25 * sin(t * 9);
-  if (B && B.darkness && G.player) ctx.globalAlpha *= clamp(1 - (hypot(x - G.player.x, y - G.player.y) - 230) / 120, .07, 1);
-  xf(ctx, x, y + lift, rot, sx, sy); ctx.lineWidth = (2 + wind * 2) / e.r;
-  ctx.fillStyle = fl ? '#ffffff' : e.frozenT > 0 ? '#5a8fb0' : wind > 0 ? mixHex(darkOf(e.col), e.col, wind * .5) : darkOf(e.col); ctx.fill(sh);
-  ctx.strokeStyle = fl ? '#ffffff' : e.frozenT > 0 ? '#bdf0ff' : wind > .6 && (t * 20 % 1) < .5 ? '#ffffff' : e.col; ctx.stroke(sh);
-  // type details
-  switch (e.type) {
-    case 'gunner': case 'lancer': ctx.beginPath(); ctx.moveTo(.6, 0); ctx.lineTo(e.type === 'lancer' ? 2 : 1.5, 0); ctx.lineWidth = .3; ctx.stroke(); break;
-    case 'lobber': xf(ctx, x, y, e.angTo, e.r, e.r); ctx.fillStyle = e.col; ctx.fillRect(.2, -.3, 1, .6); break;
-    case 'tick': ctx.fillStyle = (e.atkPhase === 1 ? (t * 16 % 1 < .5) : (t * 3 % 1 < .3)) ? '#ffffff' : e.col; ctx.beginPath(); ctx.arc(0, 0, .45, 0, TAU); ctx.fill(); break;
-    case 'brood': ctx.fillStyle = e.col; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(cos(t + i * 2.1) * .45, sin(t + i * 2.1) * .45, .22 + .05 * sin(t * 4 + i), 0, TAU); ctx.fill(); } break;
-    case 'mimic': if (e.a) { ctx.fillStyle = '#ffffff'; for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(i * .28 - .12, -.1); ctx.lineTo(i * .28, .25 + .1 * sin(t * 20 + i)); ctx.lineTo(i * .28 + .12, -.1); ctx.fill(); } } else { ctx.fillStyle = '#ffe23a'; ctx.fillRect(-.15, -.2, .3, .4); } break;
-    case 'jugg': ctx.strokeStyle = e.col; ctx.lineWidth = .12; ctx.strokeRect(-.55, -.55, 1.1, 1.1); break;
-    case 'mender': break;
-    case 'wisp': ctx.beginPath(); ctx.arc(0, 0, 1.5, t * 3, t * 3 + 4); ctx.lineWidth = .15; ctx.stroke(); break;
-    case 'gel': ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(-.3, -.35, .2, 0, TAU); ctx.fill(); break;
-  }
-  if (e.type === 'bulwark') { // frontal shield arc
-    xf(ctx, x, y, e.ang, e.r, e.r); ctx.beginPath(); ctx.arc(0, 0, 1.45, -e.def.arc, e.def.arc); ctx.lineWidth = .38; ctx.strokeStyle = e.shieldFlash > 0 ? '#ffffff' : '#9fd0ff'; ctx.stroke(); ctx.lineWidth = .12; ctx.strokeStyle = '#ffffff'; ctx.stroke(); }
-  // status overlays
-  if (e.frozenT > 0) { xf(ctx, x, y, .3, e.r * 1.3, e.r * 1.3); ctx.strokeStyle = 'rgba(200,245,255,.85)'; ctx.lineWidth = .1; ctx.stroke(SH.hex); }
-  if (e.shield > 0) { xf(ctx, x, y, 0, e.r * 1.55, e.r * 1.55); ctx.globalAlpha = .25 + .35 * e.shield / e.shieldMax; ctx.strokeStyle = '#58a8ff'; ctx.lineWidth = .12; ctx.stroke(SH.circ); ctx.globalAlpha = 1; }
-  if (e.elite) { xf(ctx, x, y, t * 1.5, e.r * 1.75, e.r * 1.75); ctx.lineWidth = .07; ctx.setLineDash([.3, .25]); e.mods.forEach((m, i) => { ctx.strokeStyle = T.elite[m].col; ctx.beginPath(); ctx.arc(0, 0, 1 + i * .14, 0, TAU); ctx.stroke(); }); ctx.setLineDash([]); }
-  if (e.reflectT > 0) { xf(ctx, x, y, t * 4, e.r * 1.4, e.r * 1.4); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = .18; ctx.globalAlpha = .6 + .4 * sin(t * 30); ctx.stroke(SH.oct); ctx.globalAlpha = 1; }
-  ctx.globalAlpha = 1;
-  // hp bar when hurt (elites always)
-  if ((e.hp < e.maxHp && G.time - e.lastHitT < 2.5) || e.elite) { camXf(); const w = max(18, e.r * 2), f = e.hp / e.maxHp; ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(x - w / 2 - 1, y - e.r - 9, w + 2, 4);
-    ctx.fillStyle = e.elite ? '#ffb020' : '#ff4a6a'; ctx.fillRect(x - w / 2, y - e.r - 8, w * f, 2); if (e.shieldMax) { ctx.fillStyle = '#58a8ff'; ctx.fillRect(x - w / 2, y - e.r - 6, w * e.shield / e.shieldMax, 1); } }
-  if (G.debug.ai) { camXf(); ctx.font = '6px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(`${e.act}${e.role ? ' ' + ROLE_NAME[e.role] : ''}${e.token ? ' T' : ''}`, x, y + e.r + 9);
-    if (e.path) { ctx.strokeStyle = 'rgba(255,255,0,.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); for (let i = e.pathI * 2; i < e.path.length; i += 2) ctx.lineTo(e.path[i], e.path[i + 1]); ctx.stroke(); } }
-  if (G.debug.hit) { camXf(); ctx.strokeStyle = '#0f0'; ctx.lineWidth = .7; ctx.beginPath(); ctx.arc(x, y, e.r, 0, TAU); ctx.stroke(); }
-}
 function drawBoss(ctx, e, x, y) {
   const t = G.rt, s = e.spin || 0, col = e.col, fl = e.flash > 0, dk = darkOf(col), r = e.r, ly = y - (e.lift || 0), inv = e.transT > 0;
   ctx.lineWidth = 2.5 / r;
@@ -125,6 +84,12 @@ function drawBoss(ctx, e, x, y) {
     // flood mechanic visuals
     const F = e.flood; if (F && F.st > 0) { camXf(); const c = arenaC(); ctx.globalAlpha = F.st === 1 ? .12 + .1 * sin(t * 20) : .32; ctx.fillStyle = '#5dff2a'; ctx.beginPath(); ctx.arc(c.x, c.y, 560, 0, TAU);
       for (const sf of F.safe) { ctx.moveTo(sf.x + sf.r, sf.y); ctx.arc(sf.x, sf.y, sf.r, 0, TAU, true); } ctx.fill('evenodd'); ctx.globalAlpha = 1; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; for (const sf of F.safe) { ctx.beginPath(); ctx.arc(sf.x, sf.y, sf.r, 0, TAU); ctx.stroke(); } }
+  } else if (e.bossId === 'choir') {
+    for (let i = 0; i < 5; i++) { choirNode(e, i); xf(ctx, _nx, _ny - (e.lift || 0), s * 2 + i, 11, 16); ctx.fillStyle = fl ? '#fff' : dk; ctx.fill(SH.sentinel); ctx.lineWidth = .12; ctx.strokeStyle = col; ctx.stroke(SH.sentinel);
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(0, 0, .22, 0, TAU); ctx.fill(); }
+    camXf(); ctx.strokeStyle = rgba(col, .35); ctx.lineWidth = 1.5; ctx.beginPath(); for (let i = 0; i < 5; i++) { choirNode(e, i); i ? ctx.lineTo(_nx, _ny) : ctx.moveTo(_nx, _ny); } ctx.closePath(); ctx.stroke();
+    xf(ctx, x, ly, -s, r, r); ctx.fillStyle = fl ? '#fff' : '#06040f'; ctx.fill(SH.circ); ctx.lineWidth = .08; ctx.strokeStyle = col; ctx.stroke(SH.circ); ctx.strokeStyle = '#7a5cff'; ctx.beginPath(); ctx.arc(0, 0, .75, 0, TAU * .7); ctx.stroke();
+    const a = e.angTo - (-s); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(cos(a) * .3, sin(a) * .3, .28, 0, TAU); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(cos(a) * .36, sin(a) * .36, .11, 0, TAU); ctx.fill();
   } else {
     for (let i = 0; i < 3; i++) { xf(ctx, x, ly, s * (i % 2 ? -1 : 1) + i, r * (1.5 + i * .25), r * (.5 + i * .1)); ctx.strokeStyle = i === 1 ? '#ff3b1f' : col; ctx.lineWidth = .05; ctx.stroke(SH.circ); }
     xf(ctx, x, ly, s * .7, r * .9, r * .9); ctx.fillStyle = fl ? '#fff' : dk; ctx.fill(SH.sq); ctx.lineWidth = .08; ctx.strokeStyle = fl ? '#fff' : col; ctx.stroke(SH.sq);
@@ -147,23 +112,6 @@ function drawAlly(ctx, a, alpha) {
   else if (a.kind === 'ghost') { const sh = SH[a.type] || SH.circ; xf(ctx, x, y, atan2(a.vy, a.vx), a.r, a.r); ctx.globalAlpha = .5 + .2 * sin(G.rt * 8); ctx.fillStyle = 'rgba(127,246,255,.25)'; ctx.fill(sh); ctx.lineWidth = 2 / a.r; ctx.strokeStyle = '#7ff6ff'; ctx.stroke(sh); ctx.globalAlpha = 1; }
   else if (a.kind === 'clone') { const p = G.player; xf(ctx, x, y, a.ang, 13, 13); ctx.globalAlpha = .55 + .15 * sin(G.rt * 6); ctx.fillStyle = '#12051e'; ctx.fill(SH.player); ctx.lineWidth = .14; ctx.strokeStyle = '#b05cff'; ctx.stroke(SH.player); ctx.globalAlpha = 1; }
   else if (a.kind === 'decoy') { const p = G.player; xf(ctx, x, y, p.ang, 13, 13); ctx.globalAlpha = .45 + .3 * sin(G.rt * 15); ctx.lineWidth = .12; ctx.strokeStyle = p.color; ctx.stroke(SH.player); ctx.globalAlpha = 1; }
-}
-function drawPlayer(ctx, p, alpha) {
-  const x = lerpX(p, alpha) + p.recX * .5, y = lerpY(p, alpha) + p.recY * .5, col = p.color, ang = p.ang;
-  // afterimages
-  for (const g of p.ghosts) { xf(ctx, g.x, g.y, g.a, 13, 13); ctx.globalAlpha = g.t / .22 * .45; ctx.lineWidth = .12; ctx.strokeStyle = col; ctx.stroke(SH.player); } ctx.globalAlpha = 1;
-  if (p.dead) return;
-  if (p.hitT > 0 && (p.hitT * 20 % 1) < .35 && p.flash <= 0) ctx.globalAlpha = .35;
-  const sq = p.squash, bob = sin(p.bob) * .6, s = 13;
-  xf(ctx, x, y + bob, ang, s * (1 + sq), s * (1 - sq * .6));
-  ctx.fillStyle = p.flash > 0 ? '#ffffff' : darkOf(col); ctx.fill(SH.player); ctx.lineWidth = .14; ctx.strokeStyle = p.flash > 0 ? '#ffffff' : col; ctx.stroke(SH.player);
-  ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(.15, 0, .16, 0, TAU); ctx.fill();
-  // weapon
-  const w = curWeapon(p); ctx.fillStyle = '#d8e2f5'; ctx.fillRect(.4, -.1, .75 + (w.def.k === 'rail' ? .4 : 0), .2);
-  ctx.globalAlpha = 1;
-  if (p.shield > 0) { xf(ctx, x, y, 0, 19, 19); ctx.globalAlpha = .2 + .4 * p.shield / p.shieldMax; ctx.strokeStyle = '#5dff8a'; ctx.lineWidth = .06; ctx.stroke(SH.hex); ctx.globalAlpha = 1; }
-  if (B.barrier && p.barrierT <= 0) { xf(ctx, x, y, G.rt, 21, 21); ctx.globalAlpha = .55; ctx.strokeStyle = '#7fdcff'; ctx.lineWidth = .05; ctx.stroke(SH.circ); ctx.globalAlpha = 1; }
-  if (G.debug.hit) { camXf(); ctx.strokeStyle = '#0f0'; ctx.lineWidth = .7; ctx.beginPath(); ctx.arc(x, y, p.r * .7, 0, TAU); ctx.stroke(); }
 }
 // ---- emissive layer (additive) -------------------------------------------------------------------------------------------
 function drawEmissive(ctx, alpha) {

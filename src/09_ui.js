@@ -313,7 +313,7 @@ function mapScreen() {
   let lines = ''; for (const n of map.nodes) for (const id of n.next) { const a = pos(n), b = pos(map.byId[id]); const on = (n.done || n === cur) && avail.includes(id); lines += `<line x1="${a.x}%" y1="${a.y}%" x2="${b.x}%" y2="${b.y}%" stroke="${on ? '#ffffff' : n.done ? '#7ff6ff55' : '#ffffff22'}" stroke-width="${on ? 2.5 : 1.5}" stroke-dasharray="${on ? '' : '4 5'}"/>`; }
   const nodes = map.nodes.map(n => { const p = pos(n), av = avail.includes(n.id); return `<div class="node ${av ? 'av' : ''} ${n.done ? 'done' : ''} ${n === cur ? 'cur' : ''}" style="left:${p.x}%;top:${p.y}%;color:${ROOM_COL[n.type]};border-color:${av ? ROOM_COL[n.type] : ''}" title="${ROOM_NAME[n.type]}" ${av ? UI.a(() => enterNode(n)) : ''}>${ROOM_ICON[n.type]}</div>`; }).join('');
   const bio = T.BIO[run.biome];
-  UI.show(`<div class="backdrop"><div class="panel clear" style="text-align:center"><h2 style="color:${bio.edge};text-shadow:0 0 12px ${bio.edge}">${bio.n}</h2><p class="dim">Sector ${run.biome + 1} of 4 · choose your path</p>
+  UI.show(`<div class="backdrop"><div class="panel clear" style="text-align:center"><h2 style="color:${bio.edge};text-shadow:0 0 12px ${bio.edge}">${bio.n}</h2><p class="dim">Sector ${run.biome + 1} of ${T.BIO.length} · choose your path</p>
     <div class="map"><svg>${lines}</svg>${nodes}</div><div class="legend">${Object.keys(ROOM_ICON).map(k => `<span style="color:${ROOM_COL[k]}">${ROOM_ICON[k]} ${ROOM_NAME[k]}</span>`).join('')}</div>
     <div class="row" style="justify-content:center;margin-top:12px">${UI.btn('Build [Tab]', () => openBuild(true, mapScreen), 'sm')}<span class="gold">◆ ${run.gold}</span><span>HP ${ceil(G.player.hp)}/${G.player.maxHp}</span></div></div></div>`, null, 'map');
 }

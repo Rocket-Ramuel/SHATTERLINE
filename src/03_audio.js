@@ -175,11 +175,12 @@ const LOOPS = {
 // =====================================================================================
 // Adaptive music: look-ahead step sequencer with stems driven by the director intensity.
 // =====================================================================================
-const SCALES = { aeolian: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], phrygian: [0, 1, 3, 5, 7, 8, 10], harm: [0, 2, 3, 5, 7, 8, 11] };
+const SCALES = { aeolian: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], phrygian: [0, 1, 3, 5, 7, 8, 10], harm: [0, 2, 3, 5, 7, 8, 11], locrian: [0, 1, 3, 5, 6, 8, 10] };
 const THEMES = [
   { bpm: 124, root: 45, sc: 'aeolian', prog: [0, 5, 3, 4], lead: 'square', pad: 'sawtooth', bassW: 'sawtooth', seed: 'neon', swing: 0 },
   { bpm: 108, root: 50, sc: 'dorian', prog: [0, 3, 6, 4], lead: 'triangle', pad: 'sawtooth', bassW: 'square', seed: 'frost', swing: .08 },
   { bpm: 116, root: 43, sc: 'phrygian', prog: [0, 1, 0, 6], lead: 'sawtooth', pad: 'triangle', bassW: 'sawtooth', seed: 'toxic', swing: .12 },
+  { bpm: 96, root: 47, sc: 'locrian', prog: [0, 3, 5, 1], lead: 'sine', pad: 'triangle', bassW: 'triangle', seed: 'abyss', swing: .06 },
   { bpm: 138, root: 40, sc: 'harm', prog: [0, 5, 1, 4], lead: 'sawtooth', pad: 'sawtooth', bassW: 'sawtooth', seed: 'core', swing: 0 },
 ];
 const DRUMS = { // 16-step strings per level: kick / snare / hat

@@ -12,7 +12,7 @@ class Enemy {
     this.tx = 0; this.ty = 0; this.hasT = false; this.path = null; this.pathI = 0; this.pathReq = false; this.pathT = 0; this.strafe = rnd() < .5 ? 1 : -1; this.waitT = 0; this.kids = 0; this.parent = null;
     this.burrowed = false; this.size = 0; this.buffT = 0; this.shieldFlash = 0; this.noDrop = false; this.a = 0; this.b = 0; this.c = 0; this.d = 0; this.ax = 0; this.ay = 0; this.phase = 0; this.lastHitT = -9;
     this.envT = 0; this.healT = 0; this.healTarget = null; this.lungeT = 0; this.ally = null; this.contact = 0; this.lastLosT = 0; this.seenT = 0; this.lx = 0; this.ly = 0;
-    this.untouchable = false; this.sliceId = 0; this.venomT = 0; this.c2 = 0; this.hasted = false; this.vamp = false; this.tl = null; this.sight = 0; this.alpha = 1; this.peek = 0; this.atkKind = ''; this.atkDur = 1; this.lockAng = false; this.onWall = null; this.dmgMul = 1; this.col = '#ffffff'; this.orbT = 0; this.bossId = ''; this.introT = 0; this.transT = 0; this.gen = null; this.waitT = 0; this.hold = 0; this.lift = 0; this.spin = 0; this.orbs = null; this.wind = 0; this.flood = null; this.floodQ = 0; this.shrink = 0; this.shrinkR = 0; this.lastAtk = ''; this.bdmg = 10;
+    this.untouchable = false; this.nodeR = 90; this.fence = null; this.tether = 0; this.lines = 0; this.lz = null; this.rx = 0; this.ry = 0; this.lifeT = 0; this.drainT = 0; this.sliceId = 0; this.venomT = 0; this.c2 = 0; this.hasted = false; this.vamp = false; this.tl = null; this.sight = 0; this.alpha = 1; this.peek = 0; this.atkKind = ''; this.atkDur = 1; this.lockAng = false; this.onWall = null; this.dmgMul = 1; this.col = '#ffffff'; this.orbT = 0; this.bossId = ''; this.introT = 0; this.transT = 0; this.gen = null; this.waitT = 0; this.hold = 0; this.lift = 0; this.spin = 0; this.orbs = null; this.wind = 0; this.flood = null; this.floodQ = 0; this.shrink = 0; this.shrinkR = 0; this.lastAtk = ''; this.bdmg = 10;
   }
 }
 const EPOOL = []; for (let i = 0; i < 400; i++) EPOOL.push(new Enemy());
@@ -157,7 +157,7 @@ function runAttack(e, dt) {
   else if (e.atkPhase === 2) { if (br.active && e.atkT > 0) br.active(e, dt); if (e.atkT <= 0) { e.atkPhase = 3; e.atkT = br.recover || .35; } }
   else if (e.atkPhase === 3 && e.atkT <= 0) { endAttack(e); e.cd = (e.def.cd || 2) * rr(.8, 1.25); }
 }
-function endAttack(e) { e.atkPhase = 0; e.contact = 0; e.lockAng = false; e.lungeT = 0; e.tl = null; TAC.release(e); }
+function endAttack(e) { e.atkPhase = 0; e.contact = 0; e.lockAng = false; e.lungeT = 0; e.tl = null; e.tether = 0; e.lines = 0; e.lz = null; TAC.release(e); }
 const canShoot = e => e.cd <= 0 && e.atkPhase === 0;
 function friendlyBlocked(e, ang, d) { // is an ally in the line of fire?
   const grid = G.grid, L = grid.list, out = grid.out, cx = cos(ang), cy = sin(ang);
@@ -359,6 +359,84 @@ const BRAINS = {
       const n = 18, o = rnd() * TAU; for (let i = 0; i < n; i++) if (i % 6 !== 0) eShot(e.x, e.y, o + i / n * TAU, e.def.bspd, eDmg(e, 12), 5, 'Juggernaut', 0, e); },
     recover: .9,
   },
+  // HOUND: fast circling flanker; close-range spread, then peels away
+  hound: {
+    acts: { circle: { score: e => .5, run: e => { const r = e.dist > 320 ? 0 : 150; if (r === 0) flowTo(e, eSpeed(e)); else strafeAround(e, r, eSpeed(e));
+      if (e.los && e.dist < 200 && canShoot(e) && tokenOk(e, 'ranged')) startAttack(e, e.def.wind, 'spread', 'wind', 1.5); } } },
+    windup: (e, dt, f) => { e.ang = e.angTo; e.dvx *= .3; e.dvy *= .3; },
+    fire: e => { const a = leadAim(e, e.x, e.y, e.def.bspd, .9, .5); for (let i = -2; i <= 2; i++) eShot(e.x, e.y, a + i * .16, e.def.bspd, eDmg(e, e.def.dmg), 4, 'Hound', 0, e);
+      A.play('eshot', e.x, e.y, .5, 1.3); e.kbx -= cos(a) * 260; e.kby -= sin(a) * 260; e.strafe = -e.strafe; },
+    recover: .3,
+  },
+  // SENTINEL: slow; telegraphs then sweeps a laser across your position
+  sentinel: {
+    acts: { hold: { score: e => .5, run: e => { if (!e.los || e.dist > 420) flowTo(e, eSpeed(e)); else strafeAround(e, 290, eSpeed(e) * .5);
+      if (e.los && e.dist < 520 && canShoot(e) && tokenOk(e, 'ranged')) { startAttack(e, e.def.wind, 'laser', null); const dir = rnd() < .5 ? 1 : -1, a0 = e.angTo - dir * e.def.arc / 2;
+        e.lz = laser(e.x, e.y, a0, e.def.wind, e.def.sweep, dir * e.def.arc / e.def.sweep, 10, eDmg(e, e.def.dmg), e, '#ff6ae0'); } } } },
+    windup: (e, dt, f) => { e.dvx = e.dvy = 0; if (e.lz) e.ang = e.lz.ang; },
+    fire: e => { e.atkT = e.def.sweep; }, active: (e, dt) => { e.dvx = e.dvy = 0; if (e.lz) e.ang = e.lz.ang; }, recover: .5,
+  },
+  // CRYO HURLER: lobbed ice bomb → slowing frost field
+  hurler: {
+    acts: { keep: { score: e => .5, run: e => { if (e.dist < 200) fleeFrom(e, plr().x, plr().y, eSpeed(e)); else if (e.dist > 380) flowTo(e, eSpeed(e)); else strafeAround(e, 300, eSpeed(e) * .5);
+      if (canShoot(e) && e.dist < 460 && tokenOk(e, 'ranged')) startAttack(e, e.def.wind, 'lob', 'wind', .9); } } },
+    fire: e => { const p = plr(), t = e.def.flight, x = p.x + (p.vx || 0) * t * .8, y = p.y + (p.vy || 0) * t * .8, dmg = eDmg(e, e.def.dmg); tele('circle', x, y, 60, 0, t, '#8fe3ff'); MORTARS.push({ x0: e.x, y0: e.y, x1: x, y1: y, t: 0, d: t, col: '#8fe3ff' });
+      A.play('mortar', e.x, e.y, .5, 1.3); addTimer(t, () => { explode(x, y, 46, dmg, 1, 'Cryo Hurler', true); addZone('eice', x, y, 62, 4, 0, 1); burst(x, y, 16, C_ICE, 240, .5, 3, PK.SHARD); }); },
+  },
+  // SPORE SPITTER: lobbed acid → corrosive pool
+  spitter: {
+    acts: { keep: { score: e => .5, run: e => { if (e.dist < 210) fleeFrom(e, plr().x, plr().y, eSpeed(e)); else if (e.dist > 400) flowTo(e, eSpeed(e)); else strafeAround(e, 320, eSpeed(e) * .5);
+      if (canShoot(e) && e.dist < 470 && tokenOk(e, 'ranged')) startAttack(e, e.def.wind, 'lob', 'wind', .7); } } },
+    fire: e => { const p = plr(), t = e.def.flight, x = p.x + (p.vx || 0) * t * .7, y = p.y + (p.vy || 0) * t * .7; tele('circle', x, y, 52, 0, t, '#a6ff3a'); MORTARS.push({ x0: e.x, y0: e.y, x1: x, y1: y, t: 0, d: t, col: '#a6ff3a' });
+      A.play('mortar', e.x, e.y, .5, .8); const dps = eDmg(e, 6); addTimer(t, () => { addZone('eacid', x, y, 52, 4.5, dps, 1); burst(x, y, 14, C_POISON, 200, .5, 3); A.play('burrow', x, y, .4, 1.6); }); },
+  },
+  // FENCER: plants a pylon, then walks sideways dragging an electric fence across the arena
+  fencer: {
+    acts: { work: { score: e => .5, run: e => { const pyl = e.ally && !e.ally.dead ? e.ally : null;
+      if (pyl) { strafeAround(e, 230, eSpeed(e) * .7); if (dist2(e.x, e.y, pyl.x, pyl.y) > e.def.fence ** 2) goTo(e, pyl.x, pyl.y, eSpeed(e)); }
+      else { if (e.dist > 300) flowTo(e, eSpeed(e)); else strafeAround(e, 260, eSpeed(e) * .6); if (e.los && canShoot(e) && tokenOk(e, 'ranged')) startAttack(e, e.def.wind, 'plant', 'wind', .6); } } } },
+    windup: (e, dt, f) => { e.dvx = e.dvy = 0; },
+    fire: e => { const a = e.angTo + PI / 2 * (rnd() < .5 ? 1 : -1), x = e.x + cos(a) * 40, y = e.y + sin(a) * 40, pyl = spawnEnemy('pylon', tileAt(x, y) === 0 ? x : e.x, tileAt(x, y) === 0 ? y : e.y, { noTele: true });
+      pyl.noDrop = true; pyl.lifeT = 9; e.ally = pyl; TETHERS.push({ a: e, b: pyl, t: 0, warn: .9, max: e.def.fence, dmg: eDmg(e, e.def.dmg), col: '#ffe23a' }); A.play('zap', e.x, e.y, .6, .8); },
+  },
+  pylon: { acts: { idle: { score: () => 1, run: e => { e.dvx = e.dvy = 0; if ((e.lifeT -= 1 / T.sim.hz) <= 0) { e.noDrop = true; killEnemy(e, DMG.ENV); } } } }, init: e => { e.mass = 99; }, fire() { } },
+  // SIPHON: approaches, telegraphs a tether, then drains you until you break range or line of sight
+  siphon: {
+    acts: { stalk: { score: e => .5, run: e => { if (e.dist > 150 || !e.los) flowTo(e, eSpeed(e)); else strafeAround(e, 140, eSpeed(e) * .6);
+      if (e.los && e.dist < 190 && canShoot(e) && tokenOk(e, 'melee')) { startAttack(e, e.def.wind, 'tether', 'windSnipe', 1.4); e.tl = tele('line', e.x, e.y, e.dist, 3, e.def.wind, '#ff4d9e', e.angTo, e); } } } },
+    windup: (e, dt, f) => { e.dvx = e.dvy = 0; if (e.tl) { e.tl.x = e.x; e.tl.y = e.y; e.tl.ang = e.angTo; e.tl.a = e.dist; } },
+    fire: e => { e.atkT = 3; e.drainT = 0; if (e.dist > 230 || !e.los) e.atkT = 0; else A.play('laser', e.x, e.y, .4, 2); },
+    active: (e, dt) => { const p = G.player; e.dvx = e.dvy = 0; if (e.dist > 240 || !los(e.x, e.y, p.x, p.y) || p.dead) { e.atkT = 0; burst(e.x, e.y, 6, ci(e.col), 120, .3, 2); return; }
+      e.tether = 1; if ((e.drainT -= dt) <= 0) { e.drainT = .25; if (p.dashT <= 0 && !G.godMode) { const d = eDmg(e, e.def.dmg) * .25 * (1 + B.dmgTaken); const a = absorbPower(p, d); p.hp -= a; G.run.stats.dmgTaken += a; e.hp = min(e.maxHp, e.hp + d * 2);
+        emit(PK.DOT, p.x, p.y, (e.x - p.x) * 2, (e.y - p.y) * 2, .4, 3, C_RED, 0); if (p.hp <= 0) { G.run.recap.push({ src: 'Siphon', dmg: round(d), t: G.time, hp: 0 }); playerDie('Siphon'); } } } },
+    recover: .6, onEnd: e => { e.tether = 0; },
+  },
+  // GEODE: slow armoured crystal; getting shot charges a visible retaliation volley
+  geode: {
+    acts: { advance: { score: e => .5, run: e => { if (e.dist > 160) flowTo(e, eSpeed(e)); else strafeAround(e, 160, eSpeed(e) * .5); } } },
+    onHurt: e => { if (e.atkPhase === 0 && G.time > (e.c2 || 0)) { e.c2 = G.time + 1.6; startAttack(e, .45, 'shards', 'wind', 1.7); } },
+    windup: (e, dt, f) => { e.dvx = e.dvy = 0; e.squash = .15 * f; },
+    fire: e => { const a = e.angTo; for (let i = -3; i <= 3; i++) eShot(e.x, e.y, a + i * .14, 210, eDmg(e, e.def.dmg), 4.5, 'Geode Shard', 2, e); A.play('shatter', e.x, e.y, .6, .8); burst(e.x, e.y, 10, ci(e.col), 200, .3, 3, PK.SHARD); },
+    recover: .3,
+  },
+  // RIFT CALLER: keeps away, opens telegraphed rifts that spawn reinforcements
+  riftcaller: {
+    acts: { keep: { score: e => .5, run: e => { if (e.dist < 260) fleeFrom(e, plr().x, plr().y, eSpeed(e)); else if (e.dist > 480) flowTo(e, eSpeed(e)); else strafeAround(e, 360, eSpeed(e) * .4);
+      if (canShoot(e) && (e.kids || 0) < 6 && G.alive < 40) startAttack(e, e.def.wind, 'rift', 'spawn', .8); } } },
+    windup: (e, dt, f) => { e.dvx = e.dvy = 0; if (!e.tl) { const p = plr(), a = atan2(p.y - e.y, p.x - e.x), d = min(e.dist * .5, 200); e.rx = e.x + cos(a) * d; e.ry = e.y + sin(a) * d; if (tileAt(e.rx, e.ry) !== 0) { e.rx = e.x; e.ry = e.y; } e.tl = tele('ring', e.rx, e.ry, 14, 34, e.def.wind, '#9d5cff', 0, e); } },
+    fire: e => { const t = G.run.biome >= 4 ? 'hound' : 'mite'; for (let i = 0; i < 2; i++) { const m = spawnEnemy(t, e.rx + rr(-12, 12), e.ry + rr(-12, 12)); m.spawnT = .45; m.parent = e; m.noDrop = rnd() < .6; e.kids = (e.kids || 0) + 1; }
+      ring(e.rx, e.ry, 40, ci(e.col), .4, 4); A.play('blink', e.rx, e.ry, .6, .7); },
+    recover: .6,
+  },
+  // SIEGE WALKER: armoured; calls artillery lines across the arena
+  siege: {
+    acts: { push: { score: e => .5, run: e => { if (e.dist > 260) flowTo(e, eSpeed(e)); else strafeAround(e, 260, eSpeed(e) * .5);
+      if (canShoot(e) && e.dist < 700 && tokenOk(e, 'ranged')) startAttack(e, e.def.wind, 'barrage', 'growl', .6); } } },
+    init: e => { e.mass = 7; },
+    windup: (e, dt, f) => { e.dvx = e.dvy = 0; e.squash = -.2 * f; if (!e.lines) { const p = plr(), base = rnd() * PI; e.lines = 1;
+      for (let k = 0; k < 3; k++) { const a = base + k * PI / 3, ox = p.x + (p.vx || 0) * .5 - cos(a) * 700, oy = p.y + (p.vy || 0) * .5 - sin(a) * 700; laser(ox, oy, a, e.def.wind, .3, 0, 26, eDmg(e, e.def.dmg), null, '#ff7a3a'); } } },
+    fire: e => { e.lines = 0; trauma(.35); A.play('explode', e.x, e.y, .5, 1.3); }, recover: .8,
+  },
 };
 // anti-stall: any walker that has lost the player for 5s pushes in along the flow field
 const HUNT = { score: e => (e.spd !== 0 && e.def.spd > 0 && G.time - e.lastLosT > 5 && !e.boss) ? 2 : 0, run: e => flowTo(e, eSpeed(e)) };
@@ -366,6 +444,16 @@ for (const k in BRAINS) if (k !== 'turret' && k !== 'mimic') BRAINS[k].acts.hunt
 // brains with a per-tick hook (attack decisions outside actions)
 for (const k in BRAINS) { const br = BRAINS[k]; if (br.tick) for (const a in br.acts) { const r0 = br.acts[a].run; br.acts[a] = Object.assign({}, br.acts[a], { run: (e, dt) => { r0(e, dt); br.tick(e, dt); } }); } }
 const MORTARS = []; // visual arcs for mortar shells
+// tethers: damaging lines between two living entities (Fencer fences)
+const TETHERS = [];
+function updateTethers(dt) {
+  const p = G.player;
+  for (let i = TETHERS.length - 1; i >= 0; i--) {
+    const t = TETHERS[i]; t.t += dt; if (t.a.dead || t.b.dead || dist2(t.a.x, t.a.y, t.b.x, t.b.y) > (t.max * 1.15) ** 2) { TETHERS.splice(i, 1); continue; }
+    if (t.t < t.warn || p.dead) continue; const dx = t.b.x - t.a.x, dy = t.b.y - t.a.y, L = hypot(dx, dy) || 1, u = clamp(((p.x - t.a.x) * dx + (p.y - t.a.y) * dy) / (L * L), 0, 1);
+    if (hypot(t.a.x + dx * u - p.x, t.a.y + dy * u - p.y) < 6 + p.r * .6) hurtPlayer(t.dmg, 'Electric Fence', p.x, p.y);
+  }
+}
 
 // =====================================================================================
 // TACTICIAN — squad coordination: roles, attack tokens, pack rushes, adaptation
@@ -460,21 +548,28 @@ const DIRECTOR = {
     if (G.room.type === 'challenge') return { mite: 6, tick: 2, wisp: 1, gunner: 1 };
     return pool;
   },
+  // squads whose members all belong to the current pool, weighted by how common their members are
+  squads(pool) { const out = {}; for (const k in T.SQUADS) { const sq = T.SQUADS[k]; if (sq.every(([t]) => pool[t])) out[k] = sq.reduce((a, [t]) => a + pool[t], 0) / sq.length; } return out; },
   spawnWave() {
     const run = G.run, D = T.director, room = G.room, p = G.player, pool = this.pool(), rng = run.rng;
     let waveBudget = max(4, this.budget * D.waveFrac * (this.stress < .2 ? 1.2 : 1)); if (room.type === 'challenge') waveBudget = 10 + G.time % 10;
-    // pick an anchor spawn point at a fair distance, then cluster around it (squad spawns)
     const cand = room.spawns.filter(s => { const d = hypot(s.x - p.x, s.y - p.y); return d > D.minSpawnDist && d < 700; });
-    if (!cand.length) return; let anchor = rng.pick(cand), spent = 0, n = 0;
-    while (spent < waveBudget && this.spent < this.budget && n < 14) {
-      const type = rng.weighted(pool), def = T.E[type]; if (type === 'spire' && G.enemies.some(e => e.type === 'spire' && !e.dead)) continue;
-      const pts = cand.filter(s => dist2(s.x, s.y, anchor.x, anchor.y) < 180 * 180), sp = pts.length ? rng.pick(pts) : rng.pick(cand);
-      if (rng.chance(.25)) anchor = rng.pick(cand);
-      let elite = null; const ech = B.thorns ? .3 : T.elite.chance * (1 + run.biome * .4) * (run.heat > 1 ? 2 : 1);
-      if ((this.elites > 0 && n === 0) || ((def.cost >= 3 || B.thorns) && rng.chance(ech))) { if (this.elites > 0) this.elites--; elite = [rng.pick(T.elite.mods)]; if (run.biome >= 2 && rng.chance(.35)) { const m2 = rng.pick(T.elite.mods); if (!elite.includes(m2)) elite.push(m2); } }
-      if (type === 'mite') { for (let i = 0; i < 3; i++) spawnEnemy('mite', sp.x + rr(-20, 20), sp.y + rr(-20, 20), { elite: i === 0 ? elite : null }); }
-      else spawnEnemy(type, sp.x, sp.y, { elite });
-      const c = def.cost * (type === 'mite' ? 3 : 1) * (elite ? 2.2 : 1); spent += c; this.spent += c; n++;
+    if (!cand.length) return; const sqw = this.squads(pool); let spent = 0, guard = 0;
+    while (spent < waveBudget * .85 && this.spent < this.budget && guard++ < 6) {
+      // one squad per anchor: members spawn together so the front line arrives with its back line
+      const key = Object.keys(sqw).length && room.type !== 'challenge' ? rng.weighted(sqw) : null, squad = key ? T.SQUADS[key] : [[rng.weighted(pool), 1]];
+      const anchor = rng.pick(cand), pts = cand.filter(s => dist2(s.x, s.y, anchor.x, anchor.y) < 170 * 170);
+      let first = true;
+      for (const [type, cnt] of squad) {
+        const def = T.E[type]; if (type === 'spire' && G.enemies.some(e => e.type === 'spire' && !e.dead)) continue;
+        for (let i = 0; i < cnt; i++) {
+          const sp = pts.length ? rng.pick(pts) : anchor; let elite = null; const ech = B.thorns ? .3 : T.elite.chance * (1 + run.biome * .4) * (run.heat > 1 ? 2 : 1);
+          if ((this.elites > 0 && first) || ((def.cost >= 3 || B.thorns) && rng.chance(ech))) { if (this.elites > 0) this.elites--; elite = [rng.pick(T.elite.mods)]; if (run.biome >= 2 && rng.chance(.35)) { const m2 = rng.pick(T.elite.mods); if (!elite.includes(m2)) elite.push(m2); } }
+          spawnEnemy(type, sp.x + rr(-14, 14), sp.y + rr(-14, 14), { elite }); first = false;
+          const c = def.cost * (elite ? 2.2 : 1); spent += c; this.spent += c;
+        }
+      }
+      if (key && rng.chance(.5)) wtext(anchor.x, anchor.y - 24, key.toUpperCase(), '#ff8ab0', 8, 1.1, -20);
     }
     this.waveT = rr(5, 8);
   },
